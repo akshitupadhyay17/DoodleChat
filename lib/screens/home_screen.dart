@@ -5,6 +5,7 @@ import '../models/chat_contact.dart';
 import '../services/chat_service.dart';
 import '../widgets/find_friends_sheet.dart';
 import 'chat_screen.dart';
+import 'create_doodle_screen.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isProfileTab = _currentTabIndex == 3;
+    final isProfileTab = _currentTabIndex == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final chatService = ChatService();
     final user = chatService.currentUser;
@@ -229,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         IconButton(
                           icon: const Icon(Icons.qr_code_rounded, color: Color(0xFFFFB703)),
                           tooltip: 'My QR Code',
-                          onPressed: () => setState(() => _currentTabIndex = 3),
+                          onPressed: () => setState(() => _currentTabIndex = 1),
                         ),
                       ],
                     ),
@@ -363,138 +364,78 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Bottom Navigation Bar with 3 tabs matching the Sketch:
       // Left: Chats, Middle: Quick Doodle Draw, Right: Profile
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-              ),
-            ],
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-              width: 1,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF16161D) : Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(
-                index: 0,
-                activeIcon: Icons.chat_bubble_rounded,
-                inactiveIcon: Icons.chat_bubble_outline_rounded,
-                label: 'Home',
-                isDark: isDark,
-                onTap: () => setState(() => _currentTabIndex = 0),
-              ),
-              _buildNavItem(
-                index: 1,
-                activeIcon: Icons.brush_rounded,
-                inactiveIcon: Icons.brush_outlined,
-                label: 'Doodle',
-                isDark: isDark,
-                onTap: () {
-                  final ready = chatService.contacts
-                      .where((c) => c.friendshipStatus == FriendshipStatus.accepted)
-                      .toList();
-                  if (ready.isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ChatScreen(contact: ready.first)),
-                    );
-                  } else {
-                    _showAddFriendDialog();
-                  }
-                },
-              ),
-              _buildNavItem(
-                index: 2,
-                activeIcon: Icons.people_alt_rounded,
-                inactiveIcon: Icons.people_outline_rounded,
-                label: 'Friends',
-                isDark: isDark,
-                onTap: _showAddFriendDialog,
-              ),
-              _buildNavItem(
-                index: 3,
-                activeIcon: Icons.person_rounded,
-                inactiveIcon: Icons.person_outline_rounded,
-                label: 'Profile',
-                isDark: isDark,
-                onTap: () => setState(() => _currentTabIndex = 3),
-              ),
-            ],
-          ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData activeIcon,
-    required IconData inactiveIcon,
-    required String label,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    final isSelected = _currentTabIndex == index;
-    const activeColor = Color(0xFFFFC72C);
-
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isSelected ? activeColor : Colors.transparent,
-                shape: BoxShape.circle,
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: activeColor.withOpacity(0.4),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
+            // Left: Chats Tab
+            IconButton(
+              icon: Icon(
+                Icons.chat_bubble_rounded,
+                size: 28,
+                color: _currentTabIndex == 0 ? const Color(0xFFFFC72C) : Colors.grey,
               ),
-              child: Center(
-                child: Icon(
-                  isSelected ? activeIcon : inactiveIcon,
-                  size: isSelected ? 22 : 24,
-                  color: isSelected
-                      ? const Color(0xFF1E1E26)
-                      : (isDark ? Colors.white60 : Colors.black45),
+              tooltip: 'Chats',
+              onPressed: () => setState(() => _currentTabIndex = 0),
+            ),
+
+            // Middle: Floating Quick Draw Doodle Button (draws doodle, then picks recipient)
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateDoodleScreen()),
+                );
+              },
+              child: Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFC72C), Color(0xFFFF6B35)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFC72C).withOpacity(0.4),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.edit_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected
-                    ? (isDark ? const Color(0xFFFFC72C) : const Color(0xFF1E1E26))
-                    : (isDark ? Colors.white54 : Colors.black45),
+
+            // Right: Settings / Profile Tab
+            IconButton(
+              icon: Icon(
+                Icons.settings_rounded,
+                size: 28,
+                color: _currentTabIndex == 1 ? const Color(0xFFFFC72C) : Colors.grey,
               ),
+              tooltip: 'Settings',
+              onPressed: () => setState(() => _currentTabIndex = 1),
             ),
           ],
         ),
@@ -666,12 +607,44 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              contact.name,
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Text(
+                  contact.name,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (contact.streakCount > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF7675).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFFF7675).withOpacity(0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${contact.streakCount}',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFFF7675),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
             Text(
               contact.lastActive,

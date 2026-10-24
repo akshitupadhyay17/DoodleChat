@@ -90,6 +90,22 @@ class ChatService extends ChangeNotifier {
     await p.setBool('loggedIn', isLoggedIn);
   }
 
+  Future<void> signOut() async {
+    isLoggedIn = false;
+    isOnboarded = false;
+    currentUser.username = '';
+    currentUser.phoneOrEmail = '';
+    final p = _prefs;
+    if (p != null) {
+      await p.setBool('loggedIn', false);
+      await p.setBool('onboarded', false);
+      await p.remove('username');
+      await p.remove('contact');
+    }
+    disconnect();
+    notifyListeners();
+  }
+
   void _saveContacts() {
     final p = _prefs;
     if (p == null) return;
@@ -181,6 +197,13 @@ class ChatService extends ChangeNotifier {
     } else {
       _send({'type': 'ping'});
     }
+  }
+
+  void disconnect() {
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
+    _onClosed();
   }
 
   void _forceReconnect() {
@@ -579,9 +602,11 @@ class ChatService extends ChangeNotifier {
 
     c.pendingDoodle = doodle;
     c.doodleStatus = DoodleChatStatus.sentWaitingForErase;
+    c.streakCount++;
     c.lastActive = 'Just now';
     contacts.remove(c);
     contacts.insert(0, c);
+    _saveContacts();
     _send({'type': 'send_doodle', 'to': c.username, 'doodle': doodle.toJson()});
     notifyListeners();
     return true;
@@ -682,6 +707,7 @@ class ChatService extends ChangeNotifier {
       lastActive: 'Demo friend',
       doodleStatus: DoodleChatStatus.receivedMustErase,
       pendingDoodle: doodle,
+      streakCount: 3,
       isDemo: true,
     );
   }

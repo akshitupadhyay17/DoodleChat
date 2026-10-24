@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/chat_service.dart';
+import 'onboarding_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBackToChats;
@@ -351,6 +352,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showSignOutDialog() {
+    final user = ChatService().currentUser;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          title: Row(
+            children: [
+              const Icon(Icons.logout_rounded, color: Color(0xFFFF4081)),
+              const SizedBox(width: 8),
+              Text(
+                'Sign Out?',
+                style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to sign out from @${user.username}?',
+            style: GoogleFonts.outfit(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                HapticFeedback.heavyImpact();
+                await ChatService().signOut();
+                if (!mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                  (route) => false,
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Signed out successfully 👋',
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor: const Color(0xFF1E1E26),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF4081),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatService = ChatService();
@@ -501,13 +561,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+
+              // Streak Highlights Card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFF7675).withValues(alpha: 0.18),
+                      const Color(0xFFFFC72C).withValues(alpha: 0.12),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFFFF7675).withValues(alpha: 0.35),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7675).withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text('🔥', style: TextStyle(fontSize: 22)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Active Doodle Streaks',
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          Text(
+                            'Exchange doodles daily with friends to keep the flame alive!',
+                            style: GoogleFonts.patrickHand(fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
 
               // Settings List Menu (From Sketch):
               // - Theme (Dark, light)
-              // - Invite others
               // - Settings
               // - Privacy Policy
+              // - Sign Out
               Container(
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E1E26) : Colors.white,
@@ -595,6 +706,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
                       onTap: _showPrivacyPolicyDialog,
+                    ),
+                    const Divider(height: 1, indent: 60),
+
+                    // Sign Out
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF4081).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.logout_rounded, color: Color(0xFFFF4081)),
+                      ),
+                      title: Text(
+                        'Sign Out',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFFF4081),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                      onTap: _showSignOutDialog,
                     ),
                   ],
                 ),

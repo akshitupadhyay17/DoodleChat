@@ -26,6 +26,7 @@ class ChatContact {
   FriendshipStatus friendshipStatus;
   DoodleData? pendingDoodle;
   String chatTheme;
+  int streakCount;
 
   /// Offline demo contact (not networked).
   final bool isDemo;
@@ -47,6 +48,7 @@ class ChatContact {
     this.friendshipStatus = FriendshipStatus.accepted,
     this.pendingDoodle,
     this.chatTheme = 'Default',
+    this.streakCount = 1,
     this.isDemo = false,
   });
 
@@ -59,6 +61,7 @@ class ChatContact {
         'bio': statusBio,
         'theme': chatTheme,
         'friendship': friendshipStatus.name,
+        'streak': streakCount,
       };
 
   factory ChatContact.fromJson(Map<String, dynamic> j) => ChatContact(
@@ -73,6 +76,7 @@ class ChatContact {
           (e) => e.name == j['friendship'],
           orElse: () => FriendshipStatus.accepted,
         ),
+        streakCount: (j['streak'] as num?)?.toInt() ?? 1,
         isOnline: false,
         lastActive: 'Saved',
       );
