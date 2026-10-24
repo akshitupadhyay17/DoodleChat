@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/chat_service.dart';
 import 'home_screen.dart';
 
@@ -17,9 +19,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _customEmojiController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
 
   String _selectedAvatar = '🦆';
   Color _selectedAvatarColor = const Color(0xFFFFC72C);
+  String? _selectedPhotoBase64;
 
   final List<String> _givenAvatars = [
     '🦆', '🐱', '🎨', '⚡️', '🌸', '🦊',
@@ -45,6 +49,29 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool get _isHandleValid => _cleanedHandle.length >= 3;
 
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final xfile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (xfile == null) return;
+      final bytes = await xfile.readAsBytes();
+      setState(() {
+        _selectedPhotoBase64 = base64Encode(bytes);
+      });
+      HapticFeedback.mediumImpact();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not pick photo: $e')),
+        );
+      }
+    }
+  }
+
   void _onContinueUsername() {
     if (!_isHandleValid) {
       HapticFeedback.vibrate();
@@ -69,16 +96,19 @@ class _AuthScreenState extends State<AuthScreen> {
 
     String finalAvatar = _selectedAvatar;
     Color finalColor = _selectedAvatarColor;
+    String? finalPhoto = _selectedPhotoBase64;
 
     if (autoSelect) {
       final rnd = Random();
       finalAvatar = _givenAvatars[rnd.nextInt(_givenAvatars.length)];
       finalColor = _givenColors[rnd.nextInt(_givenColors.length)];
+      finalPhoto = null;
     }
 
     chatService.currentUser.username = _cleanedHandle;
     chatService.currentUser.avatarEmoji = finalAvatar;
     chatService.currentUser.avatarColor = finalColor;
+    chatService.currentUser.profilePicBase64 = finalPhoto;
     chatService.currentUser.bio = 'Doodling away ✨';
     chatService.isLoggedIn = true;
     chatService.isOnboarded = true;
@@ -146,9 +176,9 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                'DoodleChat',
+                'Doodle',
                 style: GoogleFonts.gaegu(
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : const Color(0xFF1E1E26),
                 ),
@@ -335,34 +365,83 @@ class _AuthScreenState extends State<AuthScreen> {
 
           const SizedBox(height: 24),
 
-          // Big Interactive Live Avatar Preview
+          // Big Interactive Live Avatar Preview with Custom Photo Support
           Center(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: _selectedAvatarColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: _selectedAvatarColor.withValues(alpha: 0.45),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: _selectedAvatarColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _selectedAvatarColor.withValues(alpha: 0.45),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _selectedPhotoBase64 != null
+                      ? Image.memory(
+                          base64Decode(_selectedPhotoBase64!),
+                          fit: BoxFit.cover,
+                        )
+                      : Center(
+                          child: Text(
+                            _selectedAvatar,
+                            style: const TextStyle(fontSize: 48),
+                          ),
+                        ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: GestureDetector(
+                    onTap: _pickProfilePhoto,
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFC72C),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton.icon(
+                  onPressed: _pickProfilePhoto,
+                  icon: const Icon(Icons.photo_library_rounded, size: 16, color: Color(0xFFFFC72C)),
+                  label: Text(
+                    _selectedPhotoBase64 != null ? 'Change Photo' : 'Upload Profile Pic 📷',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFFFFC72C)),
+                  ),
+                ),
+                if (_selectedPhotoBase64 != null) ...[
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => setState(() => _selectedPhotoBase64 = null),
+                    child: Text('Use Emoji', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey)),
                   ),
                 ],
-              ),
-              child: Center(
-                child: Text(
-                  _selectedAvatar,
-                  style: const TextStyle(fontSize: 48),
-                ),
-              ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 16),
 
           // Select From Given: Avatars
           Text(
@@ -536,7 +615,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: Text(
-                'Enter DoodleChat 🎨',
+                'Enter Doodle 🎨',
                 style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),

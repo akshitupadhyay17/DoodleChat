@@ -22,6 +22,7 @@ class DoodleController extends ChangeNotifier {
   List<DoodleStroke> strokes = [];
   List<DoodleTextItem> texts = [];
   List<DoodleEmojiItem> emojis = [];
+  String? backgroundPhoto;
   final List<_DoodleHistoryKind> _history = [];
 
   Color color = const Color(0xFFFFC72C);
@@ -56,7 +57,7 @@ class DoodleController extends ChangeNotifier {
   static const double _itemUnits = 140.0;
 
   List<Offset> get livePoints => _live;
-  bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty;
+  bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty && (backgroundPhoto == null || backgroundPhoto!.isEmpty);
   bool get canUndo =>
       (strokes.isNotEmpty || texts.isNotEmpty || emojis.isNotEmpty) && !mustErase;
 
@@ -85,6 +86,7 @@ class DoodleController extends ChangeNotifier {
     strokes = c.strokes;
     texts = c.textItems;
     emojis = c.emojiItems;
+    backgroundPhoto = c.backgroundPhoto;
     _history.clear();
     _live.clear();
     eraserPos = null;
@@ -103,6 +105,7 @@ class DoodleController extends ChangeNotifier {
     strokes = [];
     texts = [];
     emojis = [];
+    backgroundPhoto = null;
     _history.clear();
     _live.clear();
     eraserPos = null;
@@ -113,11 +116,18 @@ class DoodleController extends ChangeNotifier {
     if (!silent) notifyListeners();
   }
 
+  void setBackgroundPhoto(String? base64) {
+    backgroundPhoto = base64;
+    committed.bump();
+    notifyListeners();
+  }
+
   DoodleData toData(String senderId) {
     final c = DoodleData(
       strokes: strokes,
       textItems: texts,
       emojiItems: emojis,
+      backgroundPhoto: backgroundPhoto,
       timestamp: DateTime.now(),
       senderId: senderId,
     ).clone();
@@ -178,7 +188,7 @@ class DoodleController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addText(String text, String fontStyle) {
+  void addText(String text, [String fontStyle = 'PatrickHand']) {
     if (text.trim().isEmpty) return;
     final rnd = math.Random();
     texts.add(DoodleTextItem(

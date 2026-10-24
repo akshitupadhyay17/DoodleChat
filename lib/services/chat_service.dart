@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/chat_contact.dart';
+import '../models/doodle_group.dart';
 import '../models/doodle_stroke.dart';
 import '../models/user_profile.dart';
 
@@ -39,6 +40,7 @@ class ChatService extends ChangeNotifier {
   bool isLoggedIn = false;
 
   final List<ChatContact> contacts = [];
+  final List<DoodleGroup> groups = [];
   final List<Map<String, dynamic>> onlinePeers = [];
 
   /// Username of the chat screen currently open (null on Home etc.).
@@ -63,6 +65,10 @@ class ChatService extends ChangeNotifier {
     currentUser.avatarEmoji = p.getString('emoji') ?? currentUser.avatarEmoji;
     currentUser.avatarColor = Color(p.getInt('color') ?? currentUser.avatarColor.toARGB32());
     currentUser.isDarkMode = p.getBool('dark') ?? false;
+    currentUser.profilePicBase64 = p.getString('profilePic');
+    if (currentUser.profilePicBase64 != null && currentUser.profilePicBase64!.isEmpty) {
+      currentUser.profilePicBase64 = null;
+    }
     isOnboarded = p.getBool('onboarded') ?? false;
     isLoggedIn = (p.getBool('loggedIn') ?? false) && currentUser.username.isNotEmpty;
 
@@ -75,6 +81,18 @@ class ChatService extends ChangeNotifier {
       } catch (_) {}
     }
     contacts.add(_buildDemoContact());
+
+    final rawGroups = p.getString('groups');
+    if (rawGroups != null) {
+      try {
+        for (final j in (jsonDecode(rawGroups) as List<dynamic>)) {
+          groups.add(DoodleGroup.fromJson(Map<String, dynamic>.from(j as Map)));
+        }
+      } catch (_) {}
+    }
+    if (groups.isEmpty) {
+      groups.add(_buildDemoGroup());
+    }
   }
 
   Future<void> saveProfile() async {
@@ -86,6 +104,11 @@ class ChatService extends ChangeNotifier {
     await p.setString('emoji', currentUser.avatarEmoji);
     await p.setInt('color', currentUser.avatarColor.toARGB32());
     await p.setBool('dark', currentUser.isDarkMode);
+    if (currentUser.profilePicBase64 != null) {
+      await p.setString('profilePic', currentUser.profilePicBase64!);
+    } else {
+      await p.remove('profilePic');
+    }
     await p.setBool('onboarded', isOnboarded);
     await p.setBool('loggedIn', isLoggedIn);
   }
@@ -111,6 +134,12 @@ class ChatService extends ChangeNotifier {
     if (p == null) return;
     final list = contacts.where((c) => !c.isDemo).map((c) => c.toJson()).toList();
     p.setString('contacts', jsonEncode(list));
+  }
+
+  void _saveGroups() {
+    final p = _prefs;
+    if (p == null) return;
+    p.setString('groups', jsonEncode(groups.map((g) => g.toJson()).toList()));
   }
 
   // ───────────────────────── connection ─────────────────────────
@@ -387,6 +416,45 @@ class ChatService extends ChangeNotifier {
         final comp = _lookups.remove(data['reqId']);
         comp?.complete(data['profile'] == null ? null : Map<String, dynamic>.from(data['profile'] as Map));
         break;
+
+      case 'doodleup_story': {
+        final from = (data['from'] ?? '').toString();
+        final c = _find(from);
+        if (c != null && data['doodle'] != null) {
+          c.activeStory = DoodleData.fromJson(Map<String, dynamic>.from(data['doodle'] as Map), from);
+          c.storyTimestamp = DateTime.now();
+          notifyListeners();
+        }
+        break;
+      }
+
+      case 'group_doodle': {
+        final gid = data['groupId']?.toString();
+        final from = (data['from'] ?? '').toString();
+        DoodleGroup? g;
+        for (final grp in groups) {
+          if (grp.id == gid) {
+            g = grp;
+            break;
+          }
+        }
+        if (g == null && gid != null) {
+          g = DoodleGroup(
+            id: gid,
+            name: data['groupName']?.toString() ?? 'Doodle Squad',
+            memberUsernames: [from, currentUser.username],
+          );
+          groups.insert(0, g);
+        }
+        if (g != null && data['doodle'] != null) {
+          g.latestDoodle = DoodleData.fromJson(Map<String, dynamic>.from(data['doodle'] as Map), from);
+          g.lastActive = DateTime.now();
+          g.streakCount++;
+          _saveGroups();
+          notifyListeners();
+        }
+        break;
+      }
     }
   }
 
@@ -468,6 +536,8 @@ class ChatService extends ChangeNotifier {
     }
     c.pendingDoodle = doodle;
     c.doodleStatus = DoodleChatStatus.receivedMustErase;
+    c.activeStory = doodle;
+    c.storyTimestamp = DateTime.now();
     c.lastActive = 'Just now';
     c.peerDrawing.value = false;
     // Move the live conversation to the top.
@@ -604,6 +674,8 @@ class ChatService extends ChangeNotifier {
     c.doodleStatus = DoodleChatStatus.sentWaitingForErase;
     c.streakCount++;
     c.lastActive = 'Just now';
+    currentUser.activeStory = doodle;
+    currentUser.storyTimestamp = DateTime.now();
     contacts.remove(c);
     contacts.insert(0, c);
     _saveContacts();
@@ -697,6 +769,27 @@ class ChatService extends ChangeNotifier {
         DoodleEmojiItem(emoji: '🐥', position: const Offset(300, 680), size: 90),
       ],
     );
+    final demoStory = DoodleData(
+      timestamp: DateTime.now(),
+      senderId: 'mayadoodles',
+      strokes: [
+        DoodleStroke(
+          points: _pts([[200, 300], [350, 180], [500, 300], [650, 180]]),
+          color: const Color(0xFFFF4081),
+          size: 16,
+        ),
+      ],
+      textItems: [
+        DoodleTextItem(
+          text: 'Good morning from Maya! ✨🎨',
+          position: const Offset(120, 600),
+          color: const Color(0xFFFFC72C),
+          fontSize: 64,
+        ),
+      ],
+      emojiItems: [DoodleEmojiItem(emoji: '🌸', position: const Offset(450, 400), size: 110)],
+    );
+
     return ChatContact(
       id: 'mayadoodles',
       name: 'Maya Lin (demo)',
@@ -707,16 +800,110 @@ class ChatService extends ChangeNotifier {
       lastActive: 'Demo friend',
       doodleStatus: DoodleChatStatus.receivedMustErase,
       pendingDoodle: doodle,
+      activeStory: demoStory,
+      storyTimestamp: DateTime.now(),
       streakCount: 3,
       isDemo: true,
     );
+  }
+
+  DoodleGroup _buildDemoGroup() {
+    return DoodleGroup(
+      id: 'grp_doodle_squad',
+      name: '🎨 Doodle Squad',
+      avatarEmoji: '⚡️',
+      color: const Color(0xFF6C5CE7),
+      memberUsernames: ['mayadoodles', currentUser.username.isNotEmpty ? currentUser.username : 'me'],
+      streakCount: 5,
+      lastActive: DateTime.now(),
+    );
+  }
+
+  DoodleGroup createGroup(String name, String emoji, List<String> memberUsernames) {
+    final members = memberUsernames.toSet().toList();
+    if (currentUser.username.isNotEmpty && !members.contains(currentUser.username)) {
+      members.add(currentUser.username);
+    }
+    final g = DoodleGroup(
+      id: 'grp_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      avatarEmoji: emoji.isNotEmpty ? emoji : '👥',
+      memberUsernames: members,
+      lastActive: DateTime.now(),
+    );
+    groups.insert(0, g);
+    _saveGroups();
+    notifyListeners();
+    return g;
+  }
+
+  void addMemberToGroup(String groupId, String username) {
+    for (final g in groups) {
+      if (g.id == groupId) {
+        if (!g.memberUsernames.contains(username)) {
+          g.memberUsernames.add(username);
+          _saveGroups();
+          notifyListeners();
+        }
+        break;
+      }
+    }
+  }
+
+  bool sendGroupDoodle(String groupId, DoodleData doodle) {
+    DoodleGroup? g;
+    for (final grp in groups) {
+      if (grp.id == groupId) {
+        g = grp;
+        break;
+      }
+    }
+    if (g == null) return false;
+    g.latestDoodle = doodle;
+    g.lastActive = DateTime.now();
+    g.streakCount++;
+    currentUser.activeStory = doodle;
+    currentUser.storyTimestamp = DateTime.now();
+    if (isConnected) {
+      for (final mem in g.memberUsernames) {
+        if (mem.toLowerCase() != currentUser.username.toLowerCase()) {
+          _send({
+            'type': 'group_doodle',
+            'groupId': groupId,
+            'groupName': g.name,
+            'to': mem,
+            'doodle': doodle.toJson(),
+          });
+        }
+      }
+    }
+    _saveGroups();
+    notifyListeners();
+    return true;
+  }
+
+  void postDoodleUpStory(DoodleData doodle) {
+    currentUser.activeStory = doodle;
+    currentUser.storyTimestamp = DateTime.now();
+    if (isConnected) {
+      for (final c in contacts) {
+        if (!c.isDemo) {
+          _send({
+            'type': 'doodleup_story',
+            'to': c.username,
+            'doodle': doodle.toJson(),
+          });
+        }
+      }
+    }
+    notifyListeners();
   }
 
   void _simulateDemoReply(ChatContact contact) {
     Future.delayed(const Duration(seconds: 7), () {
       if (contact.doodleStatus != DoodleChatStatus.sentWaitingForErase) return;
       contact.doodleStatus = DoodleChatStatus.receivedMustErase;
-      contact.pendingDoodle = DoodleData(
+      final replyDoodle = DoodleData(
         timestamp: DateTime.now(),
         senderId: contact.id,
         strokes: [
@@ -736,6 +923,9 @@ class ChatService extends ChangeNotifier {
         ],
         emojiItems: [DoodleEmojiItem(emoji: '🎉', position: const Offset(500, 420), size: 90)],
       );
+      contact.pendingDoodle = replyDoodle;
+      contact.activeStory = replyDoodle;
+      contact.storyTimestamp = DateTime.now();
       _events.add(ChatEvent(ChatEventType.incomingDoodle, contact: contact));
       notifyListeners();
     });

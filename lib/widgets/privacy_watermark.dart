@@ -31,7 +31,7 @@ class PrivacyShieldOverlay extends StatelessWidget {
                   angle: -0.35,
                   child: const Center(
                     child: Text(
-                      'DOODLECHAT 🔒',
+                      'DOODLE 🔒',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w900,

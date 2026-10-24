@@ -83,9 +83,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
               // App Title & Tagline
               Text(
-                'DoodleChat',
+                'Doodle',
                 style: GoogleFonts.gaegu(
-                  fontSize: 34,
+                  fontSize: 38,
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF1E1E26),
                   letterSpacing: 1.5,

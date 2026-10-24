@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'doodle_stroke.dart';
 
 class UserProfile {
   String username;
@@ -7,6 +8,9 @@ class UserProfile {
   String bio;
   String avatarEmoji;
   Color avatarColor;
+  String? profilePicBase64;
+  DoodleData? activeStory;
+  DateTime? storyTimestamp;
   bool isDarkMode;
   bool screenshotAlertsEnabled;
   bool hapticEnabled;
@@ -20,6 +24,9 @@ class UserProfile {
     this.bio = 'Doodling my thoughts away ✨',
     this.avatarEmoji = '🦆',
     this.avatarColor = const Color(0xFFFFC72C),
+    this.profilePicBase64,
+    this.activeStory,
+    this.storyTimestamp,
     this.isDarkMode = false,
     this.screenshotAlertsEnabled = true,
     this.hapticEnabled = true,
@@ -31,6 +38,8 @@ class UserProfile {
     return List.generate(16, (_) => r.nextInt(16).toRadixString(16)).join();
   }
 
-  String get profileLink => 'https://doodle.chat/u/$username';
-  String get qrData => 'doodlechat://user/$username';
+  bool get hasActiveStory => activeStory != null;
+
+  String get profileLink => 'https://doodle.app/u/$username';
+  String get qrData => 'doodle://user/$username';
 }

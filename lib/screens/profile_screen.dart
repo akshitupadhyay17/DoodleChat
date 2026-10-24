@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/chat_service.dart';
+import '../widgets/doodle_avatar.dart';
 import 'onboarding_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -37,8 +40,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showShareProfileDialog() {
     final user = ChatService().currentUser;
-    final shareMsg = 'Add me on DoodleChat to exchange ephemeral doodles! 🎨 https://doodlechat.app/u/${user.username}';
-    final shareUrl = 'https://doodlechat.app/u/${user.username}';
+    final shareMsg = 'Add me on Doodle to exchange ephemeral doodles! 🎨 https://doodle.app/u/${user.username}';
+    final shareUrl = 'https://doodle.app/u/${user.username}';
 
     showDialog(
       context: context,
@@ -264,7 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'DoodleChat Settings ⚙️',
+                    'Doodle Settings ⚙️',
                     style: GoogleFonts.gaegu(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
@@ -323,7 +326,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'DoodleChat Zero-Trace Guarantee:',
+                  'Doodle Zero-Trace Guarantee:',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const SizedBox(height: 8),
@@ -411,6 +414,194 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _pickProfilePhoto() async {
+    final picker = ImagePicker();
+    try {
+      final xfile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (xfile == null) return;
+      final bytes = await xfile.readAsBytes();
+      final base64Str = base64Encode(bytes);
+      final user = ChatService().currentUser;
+      user.profilePicBase64 = base64Str;
+      await ChatService().saveProfile();
+      setState(() {});
+      HapticFeedback.mediumImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated! 📷'),
+            backgroundColor: Color(0xFF00B894),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update photo: $e')),
+        );
+      }
+    }
+  }
+
+  void _showAvatarEditorDialog() {
+    final user = ChatService().currentUser;
+    final emojis = ['🦆', '🐱', '🎨', '⚡️', '🌸', '🦊', '🐸', '🚀', '🐼', '👾', '🦄', '🍩'];
+    final colors = [
+      const Color(0xFFFFC72C),
+      const Color(0xFFFF7675),
+      const Color(0xFF74B9FF),
+      const Color(0xFF55EFC4),
+      const Color(0xFFA29BFE),
+      const Color(0xFFFF6B81),
+      const Color(0xFF00CEC9),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Edit Profile Picture', style: GoogleFonts.gaegu(fontSize: 26, fontWeight: FontWeight.bold)),
+                          IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _pickProfilePhoto();
+                              },
+                              icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                              label: const Text('Upload Photo 📷'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFC72C),
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                          if (user.profilePicBase64 != null) ...[
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              onPressed: () async {
+                                final nav = Navigator.of(ctx);
+                                user.profilePicBase64 = null;
+                                await ChatService().saveProfile();
+                                setDlgState(() {});
+                                setState(() {});
+                                nav.pop();
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: const Text('Use Emoji'),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Text('CHOOSE EMOJI', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: emojis.map((em) {
+                          final isSel = user.avatarEmoji == em && user.profilePicBase64 == null;
+                          return GestureDetector(
+                            onTap: () async {
+                              user.avatarEmoji = em;
+                              user.profilePicBase64 = null;
+                              await ChatService().saveProfile();
+                              setDlgState(() {});
+                              setState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isSel ? const Color(0xFFFFC72C).withValues(alpha: 0.25) : Colors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: isSel ? const Color(0xFFFFC72C) : Colors.transparent, width: 2),
+                              ),
+                              child: Text(em, style: const TextStyle(fontSize: 26)),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Text('CHOOSE THEME COLOR', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: colors.map((col) {
+                          final isSel = user.avatarColor.value == col.value;
+                          return GestureDetector(
+                            onTap: () async {
+                              user.avatarColor = col;
+                              await ChatService().saveProfile();
+                              setDlgState(() {});
+                              setState(() {});
+                            },
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: col,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: isSel ? Colors.black : Colors.transparent, width: 3),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatService = ChatService();
@@ -442,42 +633,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 20),
 
-              // Profile Avatar Circle (From Sketch: "Profile")
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
+              // Profile Avatar Circle with Custom Photo & Story Ring
+              GestureDetector(
+                onTap: _showAvatarEditorDialog,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    DoodleAvatar(
+                      emoji: user.avatarEmoji,
                       color: user.avatarColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
+                      photoBase64: user.profilePicBase64,
+                      activeStory: user.activeStory,
+                      displayName: 'You',
+                      username: user.username,
+                      radius: 50,
+                      onTap: _showAvatarEditorDialog,
+                    ),
+                    Positioned(
+                      right: 4,
+                      bottom: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFFC72C),
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(user.avatarEmoji, style: const TextStyle(fontSize: 48)),
-                    ),
-                  ),
-                  Positioned(
-                    right: 4,
-                    bottom: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFC72C),
-                        shape: BoxShape.circle,
+                        child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
                       ),
-                      child: const Icon(Icons.edit, size: 16, color: Colors.black),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _showAvatarEditorDialog,
+                child: Text(
+                  'Change Profile Picture 📷',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFFFFC72C)),
+                ),
               ),
 
               const SizedBox(height: 14),
@@ -742,7 +935,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Text('🦆', style: TextStyle(fontSize: 16)),
                   const SizedBox(width: 6),
                   Text(
-                    'DoodleChat v1.0.0 • Pure Ephemeral Doodling',
+                    'Doodle v1.0.0 • Pure Ephemeral Doodling',
                     style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
                   ),
                 ],

@@ -19,12 +19,15 @@ class ChatContact {
   final String username;
   final String avatarEmoji;
   final Color avatarColor;
+  String? avatarPhotoBase64;
   bool isOnline;
   final String statusBio;
   String lastActive;
   DoodleChatStatus doodleStatus;
   FriendshipStatus friendshipStatus;
   DoodleData? pendingDoodle;
+  DoodleData? activeStory;
+  DateTime? storyTimestamp;
   String chatTheme;
   int streakCount;
 
@@ -41,16 +44,21 @@ class ChatContact {
     required this.username,
     required this.avatarEmoji,
     required this.avatarColor,
+    this.avatarPhotoBase64,
     this.isOnline = true,
     this.statusBio = "Doodling something cool 🎨",
     this.lastActive = "Just now",
     this.doodleStatus = DoodleChatStatus.idle,
     this.friendshipStatus = FriendshipStatus.accepted,
     this.pendingDoodle,
+    this.activeStory,
+    this.storyTimestamp,
     this.chatTheme = 'Default',
     this.streakCount = 1,
     this.isDemo = false,
   });
+
+  bool get hasActiveStory => activeStory != null;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -58,6 +66,7 @@ class ChatContact {
         'username': username,
         'emoji': avatarEmoji,
         'color': avatarColor.toARGB32(),
+        if (avatarPhotoBase64 != null) 'photo': avatarPhotoBase64,
         'bio': statusBio,
         'theme': chatTheme,
         'friendship': friendshipStatus.name,

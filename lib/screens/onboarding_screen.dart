@@ -59,10 +59,10 @@ class OnboardingScreen extends StatelessWidget {
 
               // Title & Slogan
               Text(
-                'DoodleChat',
+                'Doodle',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.gaegu(
-                  fontSize: 38,
+                  fontSize: 42,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : const Color(0xFF1E1E26),
                   letterSpacing: 1.0,

@@ -286,6 +286,7 @@ class DoodleData {
   final List<DoodleStroke> strokes;
   final List<DoodleTextItem> textItems;
   final List<DoodleEmojiItem> emojiItems;
+  final String? backgroundPhoto;
   final DateTime timestamp;
   final String senderId;
 
@@ -294,11 +295,12 @@ class DoodleData {
     required this.strokes,
     this.textItems = const [],
     this.emojiItems = const [],
+    this.backgroundPhoto,
     required this.timestamp,
     required this.senderId,
   }) : id = id ?? '${DateTime.now().microsecondsSinceEpoch}-${math.Random().nextInt(1 << 31)}';
 
-  bool get isEmpty => strokes.isEmpty && textItems.isEmpty && emojiItems.isEmpty;
+  bool get isEmpty => strokes.isEmpty && textItems.isEmpty && emojiItems.isEmpty && (backgroundPhoto == null || backgroundPhoto!.isEmpty);
 
   int get totalPointsCount {
     int count = 0;
@@ -326,6 +328,7 @@ class DoodleData {
           for (final e in emojiItems)
             DoodleEmojiItem(emoji: e.emoji, position: e.position, size: e.size)
         ],
+        backgroundPhoto: backgroundPhoto,
         timestamp: timestamp,
         senderId: senderId,
       );
@@ -335,6 +338,7 @@ class DoodleData {
         'strokes': [for (final s in strokes) s.toJson()],
         'texts': [for (final t in textItems) t.toJson()],
         'emojis': [for (final e in emojiItems) e.toJson()],
+        if (backgroundPhoto != null) 'photo': backgroundPhoto,
       };
 
   factory DoodleData.fromJson(Map<String, dynamic> json, String senderId) {
@@ -352,6 +356,7 @@ class DoodleData {
         for (final e in (json['emojis'] as List<dynamic>? ?? const []))
           DoodleEmojiItem.fromJson(Map<String, dynamic>.from(e as Map))
       ],
+      backgroundPhoto: json['photo']?.toString(),
       timestamp: DateTime.now(),
       senderId: senderId,
     );

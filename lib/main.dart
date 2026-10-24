@@ -138,7 +138,7 @@ class _DoodleChatAppState extends State<DoodleChatApp> with WidgetsBindingObserv
       TargetPlatform.fuchsia: CupertinoPageTransitionsBuilder(),
     });
     return MaterialApp(
-      title: 'DoodleChat',
+      title: 'Doodle',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: messengerKey,
       theme: AppTheme.lightTheme.copyWith(pageTransitionsTheme: transitions),

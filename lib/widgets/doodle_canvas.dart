@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/doodle_stroke.dart';
 import '../services/doodle_controller.dart';
 
 /// High-performance doodle surface.
-///  * Layer 1 (committed): finished strokes/text/emoji – repaints only when they change.
-///  * Layer 2 (live): the stroke under your finger + eraser ring – repaints per touch event.
+///  * Layer 1 (background): photo if user loaded one.
+///  * Layer 2 (committed): finished strokes/text/emoji – repaints only when they change.
+///  * Layer 3 (live): the stroke under your finger + eraser ring – repaints per touch event.
 /// Both sit in their own RepaintBoundary (separate GPU layers) and repaint through
 /// Listenables, so no widget is rebuilt while drawing.
 class DoodleCanvas extends StatefulWidget {
@@ -50,6 +52,30 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Background Photo Layer (if selected)
+              AnimatedBuilder(
+                animation: c.committed,
+                builder: (context, _) {
+                  final photo = c.backgroundPhoto;
+                  if (photo == null || photo.isEmpty) return const SizedBox.shrink();
+                  try {
+                    final bytes = base64Decode(photo);
+                    return Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.memory(
+                          bytes,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    );
+                  } catch (_) {
+                    return const SizedBox.shrink();
+                  }
+                },
+              ),
               RepaintBoundary(
                 child: CustomPaint(
                   painter: _CommittedPainter(c, scale),

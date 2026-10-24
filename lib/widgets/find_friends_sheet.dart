@@ -22,7 +22,9 @@ Future<void> showFindFriendsSheet(BuildContext context) {
 
 String parseHandle(String raw) {
   var h = raw.trim();
-  if (h.contains('doodlechat://user/')) {
+  if (h.contains('doodle://user/')) {
+    h = h.split('doodle://user/').last;
+  } else if (h.contains('doodlechat://user/')) {
     h = h.split('doodlechat://user/').last;
   } else if (h.contains('/u/')) {
     h = h.split('/u/').last;
@@ -70,7 +72,7 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
       setState(() {
         _busy = false;
         _error = service.isConnected
-            ? "Couldn't find @$handle. Ask them to open DoodleChat and sign up first."
+            ? "Couldn't find @$handle. Ask them to open Doodle and sign up first."
             : 'Still connecting to the server… try again in a moment.';
       });
       return;
@@ -448,7 +450,7 @@ class _QrScanPageState extends State<_QrScanPage> {
               if (_done) return;
               for (final b in capture.barcodes) {
                 final v = b.rawValue;
-                if (v != null && v.contains('doodlechat://user/')) {
+                if (v != null && (v.contains('doodle://user/') || v.contains('doodlechat://user/'))) {
                   _done = true;
                   Navigator.of(context).pop(v);
                   return;
@@ -483,7 +485,7 @@ class _QrScanPageState extends State<_QrScanPage> {
             left: 0,
             right: 0,
             child: Text(
-              'Point at your friend\'s DoodleChat QR 🦆',
+              'Point at your friend\'s Doodle QR 🦆',
               textAlign: TextAlign.center,
               style: GoogleFonts.patrickHand(color: Colors.white, fontSize: 20),
             ),

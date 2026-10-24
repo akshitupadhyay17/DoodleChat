@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../models/chat_contact.dart';
 import '../services/chat_service.dart';
 import '../services/doodle_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/doodle_avatar.dart';
 import '../widgets/doodle_canvas.dart';
 import '../widgets/privacy_watermark.dart';
 
@@ -166,7 +169,34 @@ class _ChatScreenState extends State<ChatScreen> {
     _toast('Doodle erased! Canvas unlocked — you can reply 🪄', const Color(0xFF00B894));
   }
 
+  Future<void> _pickPhoto() async {
+    try {
+      final xfile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1000,
+        imageQuality: 80,
+      );
+      if (xfile == null) return;
+      final bytes = await xfile.readAsBytes();
+      final base64Str = base64Encode(bytes);
+      setState(() {
+        _doodle.setBackgroundPhoto(base64Str);
+      });
+      _toast('Photo loaded! Compulsory to draw a doodle on it 🎨', const Color(0xFFFF4081));
+    } catch (e) {
+      _toast('Could not open photo: $e', Colors.black87);
+    }
+  }
+
   void _sendDoodle() {
+    final hasPhoto = _doodle.backgroundPhoto != null && _doodle.backgroundPhoto!.isNotEmpty;
+    final hasDoodle = _doodle.strokes.isNotEmpty || _doodle.texts.isNotEmpty || _doodle.emojis.isNotEmpty;
+
+    if (hasPhoto && !hasDoodle) {
+      _toast('Compulsory: Draw a doodle on your photo before sending! 🎨', const Color(0xFFFF4081));
+      return;
+    }
+
     if (_doodle.isEmpty) {
       _toast('Please draw something on the canvas first! 🎨', Colors.black87);
       return;
@@ -784,34 +814,15 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
-          // Profile Avatar with Status
-          Stack(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _contact.avatarColor.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _contact.avatarColor, width: 2),
-                ),
-                child: Center(child: Text(_contact.avatarEmoji, style: const TextStyle(fontSize: 22))),
-              ),
-              if (_contact.isOnline)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00B894),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                ),
-            ],
+          DoodleAvatar(
+            emoji: _contact.avatarEmoji,
+            color: _contact.avatarColor,
+            photoBase64: _contact.avatarPhotoBase64,
+            isOnline: _contact.isOnline,
+            activeStory: _contact.activeStory,
+            displayName: _contact.name,
+            username: _contact.username,
+            radius: 21,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1318,6 +1329,29 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+
+                  // Photo Background Button
+                  _Pressable(
+                    onTap: _pickPhoto,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(left: 6),
+                      decoration: BoxDecoration(
+                        color: _doodle.backgroundPhoto != null
+                            ? const Color(0xFFFF4081).withValues(alpha: 0.2)
+                            : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05)),
+                        borderRadius: BorderRadius.circular(12),
+                        border: _doodle.backgroundPhoto != null
+                            ? Border.all(color: const Color(0xFFFF4081), width: 1.5)
+                            : null,
+                      ),
+                      child: const Icon(
+                        Icons.add_photo_alternate_rounded,
+                        size: 20,
+                        color: Color(0xFFFF7675),
                       ),
                     ),
                   ),

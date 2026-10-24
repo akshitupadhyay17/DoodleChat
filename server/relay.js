@@ -324,6 +324,20 @@ wss.on('connection', (ws) => {
       case 'drawing':
         if (me) sendTo(norm(data.to), { type: 'peer_drawing', from: me, active: !!data.active });
         break;
+
+      case 'doodleup_story':
+        if (me) sendTo(norm(data.to), { type: 'doodleup_story', from: me, doodle: data.doodle });
+        break;
+
+      case 'group_doodle':
+        if (me) sendTo(norm(data.to), {
+          type: 'group_doodle',
+          from: me,
+          groupId: data.groupId,
+          groupName: data.groupName,
+          doodle: data.doodle,
+        });
+        break;
     }
   });
 
