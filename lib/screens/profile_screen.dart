@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/chat_service.dart';
-import '../widgets/find_friends_sheet.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBackToChats;
@@ -15,93 +15,234 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  void _showConnectFriendDialog() {
-    showFindFriendsSheet(context);
+  Future<void> _launchSocial(String url, {String? fallbackCopyText, String? feedbackMessage}) async {
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+    if (fallbackCopyText != null) {
+      Clipboard.setData(ClipboardData(text: fallbackCopyText));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(feedbackMessage ?? 'Link copied to clipboard! 📋'),
+          backgroundColor: const Color(0xFF00B894),
+        ));
+      }
+    }
   }
 
   void _showShareProfileDialog() {
     final user = ChatService().currentUser;
+    final shareMsg = 'Add me on DoodleChat to exchange ephemeral doodles! 🎨 https://doodlechat.app/u/${user.username}';
+    final shareUrl = 'https://doodlechat.app/u/${user.username}';
+
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Center(
-            child: Text(
-              'Share Doodle Profile 🦆',
-              style: GoogleFonts.gaegu(fontSize: 26, fontWeight: FontWeight.bold),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Doodle up',
+                  style: GoogleFonts.gaegu(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                const Text('🦆', style: TextStyle(fontSize: 24)),
+              ],
             ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 12,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: QrImageView(
+                    data: user.qrData,
+                    version: QrVersions.auto,
+                    size: 180.0,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF1E1E26),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.circle,
+                      color: Color(0xFFFFB703),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  '@${user.username}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Scan to connect & exchange ephemeral doodles',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+
+                // Share options
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'SHARE YOUR PROFILE',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    // WhatsApp
+                    Expanded(
+                      child: _buildShareTile(
+                        icon: Icons.chat_bubble_rounded,
+                        label: 'WhatsApp',
+                        color: const Color(0xFF25D366),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final waUrl = 'https://api.whatsapp.com/send?text=${Uri.encodeComponent(shareMsg)}';
+                          _launchSocial(waUrl, fallbackCopyText: shareUrl, feedbackMessage: 'WhatsApp link copied! 💬');
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Instagram Story
+                    Expanded(
+                      child: _buildShareTile(
+                        icon: Icons.camera_alt_rounded,
+                        label: 'Insta Story',
+                        color: const Color(0xFFE1306C),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Clipboard.setData(ClipboardData(text: shareUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Link copied! Open Instagram Story to paste sticker 📸'),
+                              backgroundColor: Color(0xFFE1306C),
+                            ),
+                          );
+                          _launchSocial('instagram://story-camera', fallbackCopyText: shareUrl);
+                        },
+                      ),
                     ),
                   ],
                 ),
-                child: QrImageView(
-                  data: user.qrData,
-                  version: QrVersions.auto,
-                  size: 180.0,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: Color(0xFF1E1E26),
-                  ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.circle,
-                    color: Color(0xFFFFB703),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '@${user.username}',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Scan to connect & exchange ephemeral doodles',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: user.profileLink));
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Profile link copied: ${user.profileLink} 📋'),
-                        backgroundColor: const Color(0xFF00B894),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Snapchat
+                    Expanded(
+                      child: _buildShareTile(
+                        icon: Icons.flash_on_rounded,
+                        label: 'Snapchat',
+                        color: const Color(0xFFFFFC00),
+                        textColor: const Color(0xFF1E1E26),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Clipboard.setData(ClipboardData(text: shareUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Profile link copied! Share to Snapchat 👻'),
+                              backgroundColor: Color(0xFF1E1E26),
+                            ),
+                          );
+                          _launchSocial('snapchat://', fallbackCopyText: shareUrl);
+                        },
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.link_rounded),
-                  label: const Text('Copy Profile Link'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFC72C),
-                    foregroundColor: const Color(0xFF1E1E26),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Copy Link
+                    Expanded(
+                      child: _buildShareTile(
+                        icon: Icons.link_rounded,
+                        label: 'Copy Link',
+                        color: const Color(0xFF6C5CE7),
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: shareUrl));
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Profile link copied: $shareUrl 📋'),
+                              backgroundColor: const Color(0xFF00B894),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildShareTile({
+    required IconData icon,
+    required String label,
+    required Color color,
+    Color textColor = Colors.white,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: textColor),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -295,29 +436,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: GoogleFonts.patrickHand(fontSize: 17, color: Colors.grey),
               ),
 
-              const SizedBox(height: 24),
-
-              // "Share Profile" Button (From Sketch: "Share profile" button)
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _showShareProfileDialog,
-                  icon: const Icon(Icons.share_rounded, size: 20),
-                  label: Text(
-                    'Share Profile',
-                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFC72C),
-                    foregroundColor: const Color(0xFF1E1E26),
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
               // QR & Link Copy Quick Cards (From Sketch: "QR, link copy")
               Row(
@@ -382,33 +501,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
 
-              const SizedBox(height: 12),
-
-              // Connect Friend / Scan QR Button
-              InkWell(
-                onTap: _showConnectFriendDialog,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFC72C).withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFFC72C), width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFE5A800), size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Scan Friend QR / Connect Handle ➔',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFFE5A800)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 24),
 
               // Settings List Menu (From Sketch):
@@ -465,25 +557,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    const Divider(height: 1, indent: 60),
-
-                    // Invite others
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF4081).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.person_add_rounded, color: Color(0xFFFF4081)),
-                      ),
-                      title: Text(
-                        'Invite others',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
-                      onTap: _showShareProfileDialog,
                     ),
                     const Divider(height: 1, indent: 60),
 

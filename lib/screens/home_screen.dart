@@ -44,12 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_currentTabIndex == 2) {
-      return ProfileScreen(
-        onBackToChats: () => setState(() => _currentTabIndex = 0),
-      );
-    }
-
+    final isProfileTab = _currentTabIndex == 3;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final chatService = ChatService();
     final user = chatService.currentUser;
@@ -61,107 +56,53 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top App Bar with Logo & Branding
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: isDark ? const Color(0xFF14141B) : const Color(0xFFFFFDF8),
+      body: isProfileTab
+          ? ProfileScreen(
+              onBackToChats: () => setState(() => _currentTabIndex = 0),
+            )
+          : SafeArea(
+              child: Column(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFC72C),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Center(child: Text('🦆', style: TextStyle(fontSize: 20))),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'DoodleChat',
-                        style: GoogleFonts.gaegu(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Live Friends / Privacy Pill
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _showAddFriendDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: chatService.onlinePeers.isNotEmpty
-                                ? const Color(0xFF00B894).withOpacity(0.18)
-                                : const Color(0xFFFFC72C).withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: chatService.onlinePeers.isNotEmpty
-                                  ? const Color(0xFF00B894)
-                                  : const Color(0xFFFFC72C),
-                              width: 1.2,
+                  // Top App Bar with Logo & Branding
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFC72C),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Center(child: Text('🦆', style: TextStyle(fontSize: 20))),
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  color: chatService.onlinePeers.isNotEmpty
-                                      ? const Color(0xFF00B894)
-                                      : const Color(0xFFFFC72C),
-                                  shape: BoxShape.circle,
-                                ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'DoodleChat',
+                              style: GoogleFonts.gaegu(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF1E1E26),
                               ),
-                              const SizedBox(width: 5),
-                              Text(
-                                chatService.onlinePeers.isNotEmpty
-                                    ? '${chatService.onlinePeers.length} Live'
-                                    : 'Connect',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: chatService.onlinePeers.isNotEmpty
-                                      ? const Color(0xFF00B894)
-                                      : const Color(0xFFE5A800),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00B894).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.shield, size: 14, color: Color(0xFF00B894)),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
 
             // Search Bar (From Sketch: "Search" at top)
             Padding(
@@ -288,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         IconButton(
                           icon: const Icon(Icons.qr_code_rounded, color: Color(0xFFFFB703)),
                           tooltip: 'My QR Code',
-                          onPressed: () => setState(() => _currentTabIndex = 2),
+                          onPressed: () => setState(() => _currentTabIndex = 3),
                         ),
                       ],
                     ),
@@ -422,84 +363,138 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Bottom Navigation Bar with 3 tabs matching the Sketch:
       // Left: Chats, Middle: Quick Doodle Draw, Right: Profile
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF16161D) : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E26) : Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              width: 1,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                index: 0,
+                activeIcon: Icons.chat_bubble_rounded,
+                inactiveIcon: Icons.chat_bubble_outline_rounded,
+                label: 'Home',
+                isDark: isDark,
+                onTap: () => setState(() => _currentTabIndex = 0),
+              ),
+              _buildNavItem(
+                index: 1,
+                activeIcon: Icons.brush_rounded,
+                inactiveIcon: Icons.brush_outlined,
+                label: 'Doodle',
+                isDark: isDark,
+                onTap: () {
+                  final ready = chatService.contacts
+                      .where((c) => c.friendshipStatus == FriendshipStatus.accepted)
+                      .toList();
+                  if (ready.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ChatScreen(contact: ready.first)),
+                    );
+                  } else {
+                    _showAddFriendDialog();
+                  }
+                },
+              ),
+              _buildNavItem(
+                index: 2,
+                activeIcon: Icons.people_alt_rounded,
+                inactiveIcon: Icons.people_outline_rounded,
+                label: 'Friends',
+                isDark: isDark,
+                onTap: _showAddFriendDialog,
+              ),
+              _buildNavItem(
+                index: 3,
+                activeIcon: Icons.person_rounded,
+                inactiveIcon: Icons.person_outline_rounded,
+                label: 'Profile',
+                isDark: isDark,
+                onTap: () => setState(() => _currentTabIndex = 3),
+              ),
+            ],
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData activeIcon,
+    required IconData inactiveIcon,
+    required String label,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final isSelected = _currentTabIndex == index;
+    const activeColor = Color(0xFFFFC72C);
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Left: Chats Tab
-            IconButton(
-              icon: Icon(
-                Icons.chat_bubble_rounded,
-                size: 28,
-                color: _currentTabIndex == 0 ? const Color(0xFFFFC72C) : Colors.grey,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor : Colors.transparent,
+                shape: BoxShape.circle,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: activeColor.withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
-              onPressed: () => setState(() => _currentTabIndex = 0),
-            ),
-
-            // Middle: Floating Quick Draw Doodle Button
-            GestureDetector(
-              onTap: () {
-                final ready = chatService.contacts
-                    .where((c) => c.friendshipStatus == FriendshipStatus.accepted)
-                    .toList();
-                if (ready.isNotEmpty) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatScreen(contact: ready.first),
-                    ),
-                  );
-                } else {
-                  _showAddFriendDialog();
-                }
-              },
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFC72C), Color(0xFFFF6B35)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFC72C).withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.edit_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
+              child: Center(
+                child: Icon(
+                  isSelected ? activeIcon : inactiveIcon,
+                  size: isSelected ? 22 : 24,
+                  color: isSelected
+                      ? const Color(0xFF1E1E26)
+                      : (isDark ? Colors.white60 : Colors.black45),
                 ),
               ),
             ),
-
-            // Right: Profile Tab
-            IconButton(
-              icon: Icon(
-                Icons.person_rounded,
-                size: 28,
-                color: _currentTabIndex == 2 ? const Color(0xFFFFC72C) : Colors.grey,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? (isDark ? const Color(0xFFFFC72C) : const Color(0xFF1E1E26))
+                    : (isDark ? Colors.white54 : Colors.black45),
               ),
-              onPressed: () => setState(() => _currentTabIndex = 2),
             ),
           ],
         ),

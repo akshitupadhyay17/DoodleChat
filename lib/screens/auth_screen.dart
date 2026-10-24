@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/chat_service.dart';
-import 'onboarding_screen.dart';
+import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -11,57 +13,90 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  bool _isEmail = true;
-  final TextEditingController _contactController = TextEditingController();
+  int _step = 0; // 0 = Username only, 1 = Profile selection / auto-select
+
   final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _customEmojiController = TextEditingController();
 
   String _selectedAvatar = '🦆';
   Color _selectedAvatarColor = const Color(0xFFFFC72C);
 
-  final List<String> _avatarEmojis = ['🦆', '🐱', '🎨', '⚡️', '🌸', '🦊', '🐸', '🚀'];
-  final List<Color> _avatarColors = [
-    const Color(0xFFFFC72C),
-    const Color(0xFFFF7675),
-    const Color(0xFF74B9FF),
-    const Color(0xFF55EFC4),
-    const Color(0xFFA29BFE),
-    const Color(0xFFFFEAA7),
+  final List<String> _givenAvatars = [
+    '🦆', '🐱', '🎨', '⚡️', '🌸', '🦊',
+    '🐸', '🚀', '🐼', '👾', '🦄', '🍩',
   ];
 
-  Future<void> _submit({bool isSkippingOptional = false}) async {
-    final chatService = ChatService();
-    final handle = _usernameController.text
-        .trim()
-        .replaceAll('@', '')
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9_.]'), '');
-    if (handle.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Pick a unique username (3+ letters, numbers or _) 🦆'),
-      ));
+  final List<Color> _givenColors = [
+    const Color(0xFFFFC72C), // Duck yellow
+    const Color(0xFFFF7675), // Coral red
+    const Color(0xFF74B9FF), // Sky blue
+    const Color(0xFF55EFC4), // Mint
+    const Color(0xFFA29BFE), // Lavender
+    const Color(0xFFFF6B81), // Pink
+    const Color(0xFF00CEC9), // Cyan
+    const Color(0xFFFFA07A), // Peach
+  ];
+
+  String get _cleanedHandle => _usernameController.text
+      .trim()
+      .replaceAll('@', '')
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9_.]'), '');
+
+  bool get _isHandleValid => _cleanedHandle.length >= 3;
+
+  void _onContinueUsername() {
+    if (!_isHandleValid) {
+      HapticFeedback.vibrate();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Username must be at least 3 characters (letters, numbers, _)',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: const Color(0xFFFF4081),
+        ),
+      );
       return;
     }
-    chatService.currentUser.phoneOrEmail = _contactController.text.trim();
-    chatService.currentUser.username = handle;
-    if (_bioController.text.trim().isEmpty && !isSkippingOptional) {
-      chatService.currentUser.bio = 'Doodling my thoughts away ✨';
+    HapticFeedback.mediumImpact();
+    setState(() => _step = 1);
+  }
+
+  Future<void> _completeRegistration({bool autoSelect = false}) async {
+    HapticFeedback.heavyImpact();
+    final chatService = ChatService();
+
+    String finalAvatar = _selectedAvatar;
+    Color finalColor = _selectedAvatarColor;
+
+    if (autoSelect) {
+      final rnd = Random();
+      finalAvatar = _givenAvatars[rnd.nextInt(_givenAvatars.length)];
+      finalColor = _givenColors[rnd.nextInt(_givenColors.length)];
     }
 
-    if (!isSkippingOptional) {
-      chatService.currentUser.avatarEmoji = _selectedAvatar;
-      chatService.currentUser.avatarColor = _selectedAvatarColor;
-      chatService.currentUser.bio = _bioController.text.trim();
-    }
-
+    chatService.currentUser.username = _cleanedHandle;
+    chatService.currentUser.avatarEmoji = finalAvatar;
+    chatService.currentUser.avatarColor = finalColor;
+    chatService.currentUser.bio = 'Doodling away ✨';
     chatService.isLoggedIn = true;
+    chatService.isOnboarded = true;
+
     await chatService.saveProfile();
     chatService.connect();
-    if (!mounted) return;
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _customEmojiController.dispose();
+    super.dispose();
   }
 
   @override
@@ -69,386 +104,476 @@ class _AuthScreenState extends State<AuthScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF14141B) : const Color(0xFFFFFDF8),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          child: _step == 0 ? _buildUsernameStep(isDark) : _buildProfileStep(isDark),
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────── STEP 1: ONLY USERNAME ─────────────────────────
+  Widget _buildUsernameStep(bool isDark) {
+    return Padding(
+      key: const ValueKey('step-username'),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+
+          // Duck Icon & App Name
+          Row(
             children: [
-              const SizedBox(height: 12),
-
-              // Header with Toy Duck & Title
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFC72C),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Center(child: Text('🦆', style: TextStyle(fontSize: 26))),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Join DoodleChat',
-                        style: GoogleFonts.gaegu(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                        ),
-                      ),
-                      Text(
-                        'Create your unique doodle handle',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 28),
-
-              // Email / Phone Switcher
               Container(
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E26) : Colors.black.withOpacity(0.05),
+                  color: const Color(0xFFFFC72C),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isEmail = true),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _isEmail
-                                ? const Color(0xFFFFC72C)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Email Login',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _isEmail ? Colors.black : (isDark ? Colors.white70 : Colors.black87),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isEmail = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: !_isEmail
-                                ? const Color(0xFFFFC72C)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Phone Number',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: !_isEmail ? Colors.black : (isDark ? Colors.white70 : Colors.black87),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Center(child: Text('🦆', style: TextStyle(fontSize: 24))),
+                  ),
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              // Contact input
+              const SizedBox(width: 12),
               Text(
-                _isEmail ? 'Email Address' : 'Phone Number',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black87,
+                'DoodleChat',
+                style: GoogleFonts.gaegu(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF1E1E26),
                 ),
               ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _contactController,
-                keyboardType: _isEmail ? TextInputType.emailAddress : TextInputType.phone,
-                decoration: InputDecoration(
-                  prefixIcon: Icon(
-                    _isEmail ? Icons.alternate_email_rounded : Icons.phone_rounded,
-                    color: const Color(0xFFFFC72C),
-                  ),
-                  hintText: _isEmail ? 'hello@example.com' : '+1 555-0199',
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF1A1A22) : Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+            ],
+          ),
+
+          const SizedBox(height: 36),
+
+          Text(
+            'Choose your @username',
+            style: GoogleFonts.gaegu(
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1E1E26),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Pick a unique handle. Friends will use this to find you and send doodle requests.',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              color: isDark ? Colors.white70 : Colors.black54,
+              height: 1.35,
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Username Input Container
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E26) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: _isHandleValid ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.3),
+                width: _isHandleValid ? 2 : 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _isHandleValid
+                      ? const Color(0xFFFFC72C).withValues(alpha: 0.2)
+                      : Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Text(
+                  '@',
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFFFB703),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _usernameController,
+                    autofocus: true,
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+                    ],
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'yourname',
+                      hintStyle: GoogleFonts.outfit(fontSize: 20, color: Colors.grey.shade400),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                if (_isHandleValid)
+                  const Icon(Icons.check_circle_rounded, color: Color(0xFF00B894), size: 24),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+          Text(
+            _isHandleValid
+                ? '✨ Available as @$_cleanedHandle'
+                : '• 3 or more characters (letters, numbers, _)',
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _isHandleValid ? const Color(0xFF00B894) : Colors.grey,
+            ),
+          ),
+
+          const Spacer(),
+
+          // Uniform Action Button (Height 54px)
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: _isHandleValid ? _onContinueUsername : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC72C),
+                foregroundColor: const Color(0xFF1E1E26),
+                disabledBackgroundColor: isDark ? Colors.white12 : Colors.grey.shade200,
+                disabledForegroundColor: Colors.grey,
+                elevation: _isHandleValid ? 2 : 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-
-              const SizedBox(height: 18),
-
-              // Unique Username Input
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Unique Username',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.check_circle, size: 14, color: Color(0xFF00B894)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Available',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: const Color(0xFF00B894),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                    'Continue ➜',
+                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  prefixText: '@ ',
-                  prefixStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  hintText: 'your_username',
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF1A1A22) : Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── STEP 2: PROFILE CUSTOM / SELECT FROM GIVEN / AUTO SELECT ─────────────────────────
+  Widget _buildProfileStep(bool isDark) {
+    return SingleChildScrollView(
+      key: const ValueKey('step-profile'),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Navigation (Back button + Handle)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => setState(() => _step = 0),
               ),
-
-              const SizedBox(height: 24),
-
-              // Optional Section Banner with "Skip for now" bracket indicator
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFC72C).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFFFC72C).withOpacity(0.3),
-                    width: 1.5,
-                  ),
+                  color: const Color(0xFFFFC72C).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Text('🎨', style: TextStyle(fontSize: 18)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Profile Photo & Bio',
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: () => _submit(isSkippingOptional: true),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            'Skip for now ➔',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: const Color(0xFFFF6B35),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Avatar Selector
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: _selectedAvatarColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(_selectedAvatar, style: const TextStyle(fontSize: 34)),
-                        ),
-                      ),
-                    ),
-                    // Avatar Color Picker
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: _avatarColors.map((c) {
-                        final isSelected = _selectedAvatarColor == c;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedAvatarColor = c),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? Colors.black : Colors.white,
-                                width: isSelected ? 2.5 : 1.5,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Emoji Pickers
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: _avatarEmojis.map((emoji) {
-                          final isSelected = _selectedAvatar == emoji;
-                          return GestureDetector(
-                            onTap: () => setState(() => _selectedAvatar = emoji),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isSelected
-                                    ? const Color(0xFFFFC72C)
-                                    : (isDark ? Colors.black26 : Colors.white),
-                                border: isSelected
-                                    ? Border.all(color: Colors.black, width: 2)
-                                    : null,
-                              ),
-                              child: Text(emoji, style: const TextStyle(fontSize: 20)),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Bio Input
-                    Text(
-                      'Bio',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _bioController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText: 'Write a short doodle bio...',
-                        filled: true,
-                        fillColor: isDark ? const Color(0xFF1A1A22) : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '@$_cleanedHandle',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFE5A800),
+                  ),
                 ),
               ),
+            ],
+          ),
 
-              const SizedBox(height: 28),
+          const SizedBox(height: 16),
 
-              // Continue Button
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () => _submit(isSkippingOptional: false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFC72C),
-                    foregroundColor: const Color(0xFF1E1E26),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+          Text(
+            'Style Your Doodle Avatar 🎨',
+            style: GoogleFonts.gaegu(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1E1E26),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select from given avatars, type any custom emoji, or tap auto-select to start instantly!',
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              color: isDark ? Colors.white70 : Colors.black54,
+              height: 1.3,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Big Interactive Live Avatar Preview
+          Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: _selectedAvatarColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: _selectedAvatarColor.withValues(alpha: 0.45),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  _selectedAvatar,
+                  style: const TextStyle(fontSize: 48),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Select From Given: Avatars
+          Text(
+            'SELECT AVATAR',
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _givenAvatars.map((emoji) {
+              final isSelected = _selectedAvatar == emoji;
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedAvatar = emoji);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFFFC72C).withValues(alpha: 0.25)
+                        : (isDark ? const Color(0xFF1E1E26) : Colors.black.withValues(alpha: 0.04)),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFFFFC72C) : Colors.transparent,
+                      width: 2.2,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFFFFC72C).withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Stack(
                     children: [
-                      Text(
-                        'Continue to Onboarding',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Center(
+                        child: Text(emoji, style: const TextStyle(fontSize: 26)),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                      if (isSelected)
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFC72C),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check, size: 10, color: Color(0xFF1E1E26)),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 16),
-            ],
+              );
+            }).toList(),
           ),
-        ),
+
+          const SizedBox(height: 22),
+
+          // Select From Given: Colors
+          Text(
+            'SELECT COLOR',
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: _givenColors.map((col) {
+              final isSelected = _selectedAvatarColor == col;
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedAvatarColor = col);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: col,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: col.withValues(alpha: isSelected ? 0.6 : 0.2),
+                        blurRadius: isSelected ? 8 : 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: isSelected
+                      ? const Center(
+                          child: Icon(Icons.check, size: 18, color: Colors.white),
+                        )
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 22),
+
+          // Custom Emoji Entry
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E26) : Colors.black.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.add_reaction_outlined, color: Color(0xFFFFB703), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _customEmojiController,
+                    decoration: InputDecoration(
+                      hintText: 'Or type custom emoji (e.g. 🦁, 🍕)',
+                      hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (text) {
+                      final val = text.trim();
+                      if (val.isNotEmpty) {
+                        setState(() => _selectedAvatar = val);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 36),
+
+          // Action Buttons: BOTH SAME SIZE (Height 54px)
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: () => _completeRegistration(autoSelect: false),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC72C),
+                foregroundColor: const Color(0xFF1E1E26),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: Text(
+                'Enter DoodleChat 🎨',
+                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Auto-Select to Proceed Without Selecting (Same Size: 54px)
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: OutlinedButton(
+              onPressed: () => _completeRegistration(autoSelect: true),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isDark ? Colors.white : const Color(0xFF1E1E26),
+                side: BorderSide(
+                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('⚡', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Auto-Select & Jump In',
+                    style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }
