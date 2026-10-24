@@ -7,6 +7,8 @@ class RepaintTick extends ChangeNotifier {
   void bump() => notifyListeners();
 }
 
+enum _DoodleHistoryKind { stroke, text, emoji }
+
 /// Owns the doodle being drawn / erased. The UI never `setState`s while a
 /// finger is moving: only the two canvas layers repaint through [committed]
 /// and [live], which is what keeps drawing at a locked 60/120 fps.
@@ -20,12 +22,16 @@ class DoodleController extends ChangeNotifier {
   List<DoodleStroke> strokes = [];
   List<DoodleTextItem> texts = [];
   List<DoodleEmojiItem> emojis = [];
+  final List<_DoodleHistoryKind> _history = [];
 
   Color color = const Color(0xFFFFC72C);
 
   /// Brush size in *screen* pixels (converted to virtual units on commit).
   double brushPx = 5.0;
   bool eraser = false;
+
+  /// When non-null, tapping anywhere on the canvas stamps this emoji.
+  String? stampEmoji;
 
   /// Read-only (e.g. waiting for the friend to erase my doodle).
   bool locked = false;
@@ -51,7 +57,14 @@ class DoodleController extends ChangeNotifier {
 
   List<Offset> get livePoints => _live;
   bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty;
-  bool get canUndo => strokes.isNotEmpty && !mustErase;
+  bool get canUndo =>
+      (strokes.isNotEmpty || texts.isNotEmpty || emojis.isNotEmpty) && !mustErase;
+
+  double get emojiSize {
+    if (brushPx <= 3.0) return 72.0;
+    if (brushPx <= 6.0) return 104.0;
+    return 140.0;
+  }
 
   void setViewport(double w, double h) {
     viewWidth = w;
@@ -72,8 +85,10 @@ class DoodleController extends ChangeNotifier {
     strokes = c.strokes;
     texts = c.textItems;
     emojis = c.emojiItems;
+    _history.clear();
     _live.clear();
     eraserPos = null;
+    stampEmoji = null;
     _completed = false;
     mustErase = forErasing;
     eraser = forErasing;
@@ -88,6 +103,7 @@ class DoodleController extends ChangeNotifier {
     strokes = [];
     texts = [];
     emojis = [];
+    _history.clear();
     _live.clear();
     eraserPos = null;
     _initialUnits = 0;
@@ -112,6 +128,7 @@ class DoodleController extends ChangeNotifier {
 
   void setEraser(bool v) {
     eraser = v;
+    if (v) stampEmoji = null;
     eraserPos = null;
     live.bump();
     notifyListeners();
@@ -120,6 +137,13 @@ class DoodleController extends ChangeNotifier {
   void setColor(Color c) {
     color = c;
     eraser = false;
+    stampEmoji = null;
+    notifyListeners();
+  }
+
+  void setStampEmoji(String? emoji) {
+    stampEmoji = emoji;
+    if (emoji != null) eraser = false;
     notifyListeners();
   }
 
@@ -130,7 +154,26 @@ class DoodleController extends ChangeNotifier {
 
   void undo() {
     if (!canUndo) return;
-    strokes.removeLast();
+    if (_history.isNotEmpty) {
+      final act = _history.removeLast();
+      switch (act) {
+        case _DoodleHistoryKind.stroke:
+          if (strokes.isNotEmpty) strokes.removeLast();
+          break;
+        case _DoodleHistoryKind.text:
+          if (texts.isNotEmpty) texts.removeLast();
+          break;
+        case _DoodleHistoryKind.emoji:
+          if (emojis.isNotEmpty) emojis.removeLast();
+          break;
+      }
+    } else if (strokes.isNotEmpty) {
+      strokes.removeLast();
+    } else if (emojis.isNotEmpty) {
+      emojis.removeLast();
+    } else if (texts.isNotEmpty) {
+      texts.removeLast();
+    }
     committed.bump();
     notifyListeners();
   }
@@ -140,23 +183,35 @@ class DoodleController extends ChangeNotifier {
     final rnd = math.Random();
     texts.add(DoodleTextItem(
       text: text.trim(),
-      position: Offset(60 + rnd.nextDouble() * 220, viewHeightVirtual * (0.28 + rnd.nextDouble() * 0.4)),
+      position: Offset(
+        60 + rnd.nextDouble() * 220,
+        viewHeightVirtual * (0.28 + rnd.nextDouble() * 0.4),
+      ),
       color: color,
       fontSize: 70,
       fontStyle: fontStyle,
     ));
+    _history.add(_DoodleHistoryKind.text);
     committed.bump();
     notifyListeners();
   }
 
-  void addEmoji(String emoji) {
+  void addEmoji(String emoji, {Offset? virtualPos, double? customSize}) {
+    final s = customSize ?? emojiSize;
     final rnd = math.Random();
+    final pos = virtualPos ??
+        Offset(
+          120 + rnd.nextDouble() * 560,
+          viewHeightVirtual * (0.22 + rnd.nextDouble() * 0.5),
+        );
     emojis.add(DoodleEmojiItem(
       emoji: emoji,
-      position: Offset(120 + rnd.nextDouble() * 560, viewHeightVirtual * (0.22 + rnd.nextDouble() * 0.5)),
-      size: 110,
+      position: pos,
+      size: s,
     ));
+    _history.add(_DoodleHistoryKind.emoji);
     committed.bump();
+    onStrokeStart?.call();
     notifyListeners();
   }
 
@@ -169,6 +224,18 @@ class DoodleController extends ChangeNotifier {
       eraserPos = v;
       _eraseAt(v);
       live.bump();
+    } else if (stampEmoji != null) {
+      final s = emojiSize;
+      final item = DoodleEmojiItem(
+        emoji: stampEmoji!,
+        position: Offset(v.dx - s / 2, v.dy - s / 2),
+        size: s,
+      );
+      emojis.add(item);
+      _history.add(_DoodleHistoryKind.emoji);
+      committed.bump();
+      onStrokeStart?.call();
+      notifyListeners();
     } else {
       _live
         ..clear()
@@ -185,6 +252,21 @@ class DoodleController extends ChangeNotifier {
       eraserPos = v;
       _eraseAt(v);
       live.bump();
+    } else if (stampEmoji != null) {
+      // Allow drag-stamping when moving at a spaced distance!
+      final s = emojiSize;
+      final lastPos = emojis.isNotEmpty ? emojis.last.position : null;
+      final curPos = Offset(v.dx - s / 2, v.dy - s / 2);
+      if (lastPos == null || (curPos - lastPos).distance >= s * 0.85) {
+        emojis.add(DoodleEmojiItem(
+          emoji: stampEmoji!,
+          position: curPos,
+          size: s,
+        ));
+        _history.add(_DoodleHistoryKind.emoji);
+        committed.bump();
+        notifyListeners();
+      }
     } else {
       if (_live.isEmpty || (v - _live.last).distance * scale >= 1.2) {
         _live.add(v);
@@ -200,12 +282,16 @@ class DoodleController extends ChangeNotifier {
       live.bump();
       return;
     }
+    if (stampEmoji != null) {
+      return;
+    }
     if (_live.isNotEmpty) {
       strokes.add(DoodleStroke(
         points: List<Offset>.from(_live),
         color: color,
         size: brushPx / scale,
       ));
+      _history.add(_DoodleHistoryKind.stroke);
       _live.clear();
       committed.bump();
       live.bump();

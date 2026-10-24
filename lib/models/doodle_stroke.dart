@@ -143,16 +143,36 @@ TextStyle doodleTextStyle(String fontStyle, double fontSize, Color color) {
       blurRadius: 1,
     ),
   ];
+  const emojiFallbacks = [
+    'Apple Color Emoji',
+    'Noto Color Emoji',
+    'Segoe UI Emoji',
+    'Android Emoji',
+    'EmojiSymbols',
+    'sans-serif',
+  ];
   switch (fontStyle) {
     case 'Gaegu':
       return GoogleFonts.gaegu(
-          fontSize: fontSize, fontWeight: FontWeight.w700, color: color, shadows: shadows);
+        fontSize: fontSize,
+        fontWeight: FontWeight.w700,
+        color: color,
+        shadows: shadows,
+      ).copyWith(fontFamilyFallback: emojiFallbacks);
     case 'Caveat':
       return GoogleFonts.caveat(
-          fontSize: fontSize, fontWeight: FontWeight.w700, color: color, shadows: shadows);
+        fontSize: fontSize,
+        fontWeight: FontWeight.w700,
+        color: color,
+        shadows: shadows,
+      ).copyWith(fontFamilyFallback: emojiFallbacks);
     default:
       return GoogleFonts.patrickHand(
-          fontSize: fontSize, fontWeight: FontWeight.w700, color: color, shadows: shadows);
+        fontSize: fontSize,
+        fontWeight: FontWeight.w700,
+        color: color,
+        shadows: shadows,
+      ).copyWith(fontFamilyFallback: emojiFallbacks);
   }
 }
 
@@ -226,7 +246,20 @@ class DoodleEmojiItem {
   TextPainter get painter {
     if (_painter != null) return _painter!;
     final tp = TextPainter(
-      text: TextSpan(text: emoji, style: TextStyle(fontSize: size)),
+      text: TextSpan(
+        text: emoji,
+        style: TextStyle(
+          fontSize: size,
+          fontFamilyFallback: const [
+            'Apple Color Emoji',
+            'Noto Color Emoji',
+            'Segoe UI Emoji',
+            'Android Emoji',
+            'EmojiSymbols',
+            'sans-serif',
+          ],
+        ),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     return _painter = tp;

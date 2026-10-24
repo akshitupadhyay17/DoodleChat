@@ -30,14 +30,15 @@ class _ChatScreenState extends State<ChatScreen> {
   StreamSubscription<ChatEvent>? _eventSub;
 
   String? _loadedDoodleId;
-  DoodleChatStatus? _lastStatus;
   bool _isRecordingVoice = false;
   String _selectedDoodleFont = 'PatrickHand';
 
   Timer? _drawingTimer;
   bool _iAmDrawing = false;
 
-  final List<String> _emojiDoodles = ['🐥', '💖', '⚡️', '⭐', '🔥', '🌸', '✨', '🐾'];
+  final List<String> _emojiDoodles = [
+    '🐥', '🦆', '💖', '🔥', '✨', '⭐', '🥰', '🐾', '🌈', '🎉'
+  ];
 
   ChatContact get _contact => widget.contact;
 
@@ -104,7 +105,6 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         break;
     }
-    _lastStatus = status;
     if (mounted) setState(() {});
   }
 
@@ -219,6 +219,198 @@ class _ChatScreenState extends State<ChatScreen> {
           _addText(r.recognizedWords);
           _toast('Voice ➔ handwritten doodle ✍️', const Color(0xFFFFC72C));
         }
+      },
+    );
+  }
+
+  void _showEmojiPickerSheet(BuildContext context) {
+    final customCtrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final categories = <String, List<String>>{
+      '🦆 Duck & Pals': ['🐥', '🦆', '🐤', '🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐸', '🦄', '🐾', '🐝', '🐙', '🦋'],
+      '✨ Sparks & Magic': ['✨', '⭐', '🌟', '💫', '🔥', '💥', '⚡️', '🌈', '☀️', '🌙', '🪐', '☁️', '❄️', '🌸', '🍀'],
+      '💖 Hearts & Moods': ['🥰', '😍', '💖', '❤️', '💕', '💘', '💛', '😎', '🤪', '🥳', '🤩', '🥺', '😂', '🤤', '😇'],
+      '🎨 Creative & Fun': ['🎨', '🖌️', '✏️', '🖍️', '💌', '🎈', '🎉', '🪄', '🎯', '🚀', '💎', '🍕', '🍦', '🍩', '☕'],
+      '👍 Hands & Vibes': ['✌️', '👍', '👏', '🙌', '🤝', '👋', '🤘', '🤙', '👀', '💯', '💬', '💭', '💡', '🎵', '👑'],
+    };
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF1E1E26) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle Bar & Title
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('🎨', style: TextStyle(fontSize: 22)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Doodle Emoji Stamps',
+                              style: GoogleFonts.gaegu(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Custom Emoji Input Row
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF14141B) : Colors.black.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFFFFC72C).withValues(alpha: 0.4),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.emoji_emotions_outlined, color: Color(0xFFFFC72C), size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: customCtrl,
+                              style: const TextStyle(fontSize: 16),
+                              decoration: InputDecoration(
+                                hintText: 'Type or paste ANY emoji here...',
+                                hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              final text = customCtrl.text.trim();
+                              if (text.isNotEmpty) {
+                                if (!_emojiDoodles.contains(text)) {
+                                  setState(() => _emojiDoodles.insert(0, text));
+                                }
+                                _doodle.setStampEmoji(text);
+                                _doodle.addEmoji(text);
+                                _markDrawing();
+                                HapticFeedback.mediumImpact();
+                                Navigator.pop(ctx);
+                                _toast('Stamp selected! Tap canvas to stamp more ✨', const Color(0xFFFFC72C));
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFFC72C),
+                              foregroundColor: const Color(0xFF1E1E26),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('Stamp', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Categories & Grids
+                    Expanded(
+                      child: ListView(
+                        children: categories.entries.map((entry) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text(
+                                  entry.key,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: entry.value.map((e) {
+                                  return _Pressable(
+                                    onTap: () {
+                                      if (!_emojiDoodles.contains(e)) {
+                                        setState(() => _emojiDoodles.insert(0, e));
+                                      }
+                                      _doodle.setStampEmoji(e);
+                                      _doodle.addEmoji(e);
+                                      _markDrawing();
+                                      HapticFeedback.selectionClick();
+                                      Navigator.pop(ctx);
+                                      _toast('Stamped "$e"! Tap canvas to stamp more 🎨', const Color(0xFFFFC72C));
+                                    },
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(e, style: const TextStyle(fontSize: 22)),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -402,6 +594,69 @@ class _ChatScreenState extends State<ChatScreen> {
                                         Text(
                                           'Touch & sketch with finger or write below',
                                           style: GoogleFonts.patrickHand(fontSize: 16),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          // Active Stamp Mode floating indicator
+                          ListenableBuilder(
+                            listenable: _doodle,
+                            builder: (context, _) {
+                              final stamp = _doodle.stampEmoji;
+                              if (stamp == null || isSentWaiting || isMustErase) {
+                                return const SizedBox.shrink();
+                              }
+                              return Positioned(
+                                top: 12,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E1E26).withValues(alpha: 0.88),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFFFFC72C), width: 1.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.25),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(stamp, style: const TextStyle(fontSize: 18)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Stamp mode: tap canvas to place',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        GestureDetector(
+                                          onTap: () {
+                                            _doodle.setStampEmoji(null);
+                                            HapticFeedback.selectionClick();
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white24,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -664,31 +919,119 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               // Emoji Doodles Quick Stamp Row (From Sketch: "emoji doodle")
               SizedBox(
-                height: 36,
+                height: 38,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-                      child: Text('Stamps:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                    ..._emojiDoodles.map(
-                      (emoji) => _Pressable(
-                        onTap: () {
-                          _doodle.addEmoji(emoji);
-                          _markDrawing();
-                          HapticFeedback.selectionClick();
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(emoji, style: const TextStyle(fontSize: 18)),
+                    // Draw / Pen mode button
+                    _Pressable(
+                      onTap: () {
+                        _doodle.setStampEmoji(null);
+                        _doodle.setEraser(false);
+                        HapticFeedback.selectionClick();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: (!_doodle.eraser && _doodle.stampEmoji == null)
+                              ? const Color(0xFFFFC72C)
+                              : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit_rounded,
+                              size: 14,
+                              color: (!_doodle.eraser && _doodle.stampEmoji == null)
+                                  ? const Color(0xFF1E1E26)
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Draw',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: (!_doodle.eraser && _doodle.stampEmoji == null)
+                                    ? const Color(0xFF1E1E26)
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
+
+                    // More Emojis Picker Button
+                    _Pressable(
+                      onTap: () => _showEmojiPickerSheet(context),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFC72C).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFFFFC72C).withValues(alpha: 0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.add_rounded, size: 14, color: Color(0xFFE5A800)),
+                            SizedBox(width: 2),
+                            Text(
+                              'More 😊',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE5A800)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    Container(
+                      width: 1,
+                      height: 20,
+                      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+
+                    // Quick Stamps list
+                    ..._emojiDoodles.map(
+                      (emoji) {
+                        final isStampActive = _doodle.stampEmoji == emoji;
+                        return _Pressable(
+                          onTap: () {
+                            if (isStampActive) {
+                              _doodle.setStampEmoji(null);
+                            } else {
+                              _doodle.setStampEmoji(emoji);
+                              _doodle.addEmoji(emoji);
+                              _markDrawing();
+                            }
+                            HapticFeedback.selectionClick();
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isStampActive
+                                  ? const Color(0xFFFFC72C).withValues(alpha: 0.3)
+                                  : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isStampActive ? const Color(0xFFFFC72C) : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(emoji, style: const TextStyle(fontSize: 18)),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
