@@ -112,6 +112,18 @@ class _DoodleChatAppState extends State<DoodleChatApp> with WidgetsBindingObserv
         _toast(e.message ?? 'That username is taken — pick another',
             color: const Color(0xFFFF4081));
         break;
+      case ChatEventType.incomingFriendRequest:
+        _toast('💌 @${e.contact?.username ?? ''} sent you a doodle request!',
+            color: const Color(0xFFFFC72C));
+        break;
+      case ChatEventType.friendRequestAccepted:
+        _toast('🎉 @${e.contact?.username ?? ''} accepted your request! Start doodling!',
+            color: const Color(0xFF00B894));
+        break;
+      case ChatEventType.friendRequestDeclined:
+        _toast(e.message ?? 'Doodle request was declined',
+            color: const Color(0xFF636E72));
+        break;
     }
   }
 

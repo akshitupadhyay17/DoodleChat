@@ -35,7 +35,14 @@ const sockets = new Map();
 /** "from>to" -> { doodle } (a doodle that has not been erased yet) */
 const pending = new Map();
 
+/** Mutual friends: set of "userA<>userB" */
+const friends = new Set();
+/** Pending friend requests: set of "from>REQ>to" */
+const friendRequests = new Set();
+
 const key = (from, to) => `${from}>${to}`;
+const pairKey = (a, b) => [norm(a), norm(b)].sort().join('<>');
+const reqKey = (from, to) => `${norm(from)}>REQ>${norm(to)}`;
 const norm = (u) => String(u || '').toLowerCase().trim().replace(/^@/, '').replace(/[^a-z0-9_.]/g, '');
 
 function publicProfile(p) {
@@ -64,14 +71,40 @@ function broadcastOnlineUsers() {
 }
 
 function buildSync(username) {
+  const u = norm(username);
   const incoming = [];
   const outgoing = [];
   for (const [k, v] of pending) {
     const [from, to] = k.split('>');
-    if (to === username) incoming.push({ from, doodle: v.doodle });
-    if (from === username) outgoing.push(to);
+    if (to === u) incoming.push({ from, doodle: v.doodle });
+    if (from === u) outgoing.push(to);
   }
-  return { type: 'sync', incoming, outgoing };
+  const incomingRequests = [];
+  const outgoingRequests = [];
+  for (const r of friendRequests) {
+    const [from, to] = r.split('>REQ>');
+    if (to === u) {
+      const p = profiles.get(from);
+      incomingRequests.push({ from, profile: p ? publicProfile(p) : { username: from, name: from } });
+    }
+    if (from === u) {
+      outgoingRequests.push(to);
+    }
+  }
+  const friendsList = [];
+  for (const f of friends) {
+    const [a, b] = f.split('<>');
+    if (a === u) friendsList.push(b);
+    else if (b === u) friendsList.push(a);
+  }
+  return {
+    type: 'sync',
+    incoming,
+    outgoing,
+    incomingRequests,
+    outgoingRequests,
+    friends: friendsList,
+  };
 }
 
 // ───────────────────────── HTTP (static app + tiny API) ─────────────────────────
@@ -203,11 +236,63 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'send_friend_request': {
+        if (!me) return;
+        const to = norm(data.to);
+        if (!to || to === me) return;
+        if (friends.has(pairKey(me, to))) {
+          const p = profiles.get(to);
+          send(ws, {
+            type: 'friend_request_accepted',
+            from: to,
+            profile: p ? publicProfile(p) : { username: to, name: to },
+          });
+          return;
+        }
+        friendRequests.add(reqKey(me, to));
+        send(ws, { type: 'friend_request_sent', to });
+        const senderProfile = publicProfile(profiles.get(me) || { username: me, name: me });
+        sendTo(to, { type: 'incoming_friend_request', from: me, profile: senderProfile });
+        console.log(`🤝 @${me} sent doodle request to @${to}`);
+        break;
+      }
+
+      case 'respond_friend_request': {
+        if (!me) return;
+        const from = norm(data.to); // the requester
+        if (!from) return;
+        const accept = data.accept === true;
+        friendRequests.delete(reqKey(from, me));
+        if (accept) {
+          friends.add(pairKey(from, me));
+          const myProfile = publicProfile(profiles.get(me) || { username: me, name: me });
+          const theirProfile = publicProfile(profiles.get(from) || { username: from, name: from });
+          sendTo(from, { type: 'friend_request_accepted', from: me, profile: myProfile });
+          send(ws, { type: 'friend_request_accepted', from, profile: theirProfile });
+          console.log(`🎉 @${me} accepted @${from}'s doodle request!`);
+        } else {
+          sendTo(from, { type: 'friend_request_declined', from: me });
+          send(ws, { type: 'friend_request_declined', from });
+          console.log(`✕ @${me} declined @${from}'s doodle request`);
+        }
+        break;
+      }
+
       case 'send_doodle': {
         if (!me) return;
         const to = norm(data.to);
         if (!profiles.has(to) || to === me) {
           send(ws, { type: 'send_rejected', to, reason: 'unknown_user' });
+          return;
+        }
+        // Must be friends before sending doodles!
+        if (!friends.has(pairKey(me, to))) {
+          send(ws, {
+            type: 'send_rejected',
+            to,
+            reason: 'not_friends',
+            message: 'You must send a doodle request first and wait for approval!',
+          });
           return;
         }
         // One doodle at a time between a pair, in either direction.

@@ -16,6 +16,9 @@ enum ChatEventType {
   connectionLost,
   connectionRestored,
   registerError,
+  incomingFriendRequest,
+  friendRequestAccepted,
+  friendRequestDeclined,
 }
 
 class ChatEvent {
@@ -225,7 +228,7 @@ class ChatService extends ChangeNotifier {
 
   final Map<String, Completer<Map<String, dynamic>?>> _lookups = {};
 
-  void _onMessage(dynamic raw) {
+  Future<void> _onMessage(dynamic raw) async {
     _lastRx = DateTime.now();
     Map<String, dynamic> data;
     try {
@@ -295,18 +298,64 @@ class ChatService extends ChangeNotifier {
         if (c != null) c.peerDrawing.value = data['active'] == true;
         break;
 
+      case 'incoming_friend_request': {
+        final from = (data['from'] ?? '').toString();
+        final prof = data['profile'] != null ? Map<String, dynamic>.from(data['profile'] as Map) : null;
+        final c = await ensureContact(from, profile: prof, initialStatus: FriendshipStatus.requestReceived);
+        c.friendshipStatus = FriendshipStatus.requestReceived;
+        _saveContacts();
+        _events.add(ChatEvent(ChatEventType.incomingFriendRequest, contact: c));
+        notifyListeners();
+        break;
+      }
+
+      case 'friend_request_accepted': {
+        final from = (data['from'] ?? '').toString();
+        final prof = data['profile'] != null ? Map<String, dynamic>.from(data['profile'] as Map) : null;
+        final c = await ensureContact(from, profile: prof, initialStatus: FriendshipStatus.accepted);
+        c.friendshipStatus = FriendshipStatus.accepted;
+        _saveContacts();
+        _events.add(ChatEvent(ChatEventType.friendRequestAccepted, contact: c));
+        notifyListeners();
+        break;
+      }
+
+      case 'friend_request_declined': {
+        final from = (data['from'] ?? '').toString();
+        final c = _find(from);
+        if (c != null && c.friendshipStatus == FriendshipStatus.requestSent) {
+          contacts.remove(c);
+          _saveContacts();
+          _events.add(ChatEvent(
+            ChatEventType.friendRequestDeclined,
+            contact: c,
+            message: '@$from declined your doodle request.',
+          ));
+          notifyListeners();
+        }
+        break;
+      }
+
       case 'send_rejected':
         final c = _find((data['to'] ?? '').toString());
         if (c != null && c.doodleStatus == DoodleChatStatus.sentWaitingForErase) {
           c.doodleStatus = DoodleChatStatus.idle;
           c.pendingDoodle = null;
         }
+        final reason = data['reason']?.toString();
+        String msg = 'Could not deliver that doodle.';
+        if (reason == 'pending_doodle') {
+          msg = 'A doodle is still waiting to be erased in this chat.';
+        } else if (reason == 'not_friends') {
+          msg = data['message']?.toString() ?? 'You must send a doodle request first!';
+          if (c != null && c.friendshipStatus == FriendshipStatus.accepted) {
+            c.friendshipStatus = FriendshipStatus.requestSent;
+          }
+        }
         _events.add(ChatEvent(
           ChatEventType.sendRejected,
           contact: c,
-          message: data['reason'] == 'pending_doodle'
-              ? 'A doodle is still waiting to be erased in this chat.'
-              : 'Could not deliver that doodle.',
+          message: msg,
         ));
         notifyListeners();
         break;
@@ -346,6 +395,31 @@ class ChatService extends ChangeNotifier {
       final from = m['from'].toString();
       incomingFrom.add(from);
       await _handleIncoming(from, Map<String, dynamic>.from(m['doodle'] as Map), announce: false);
+    }
+
+    final incReqs = (data['incomingRequests'] as List<dynamic>? ?? const []);
+    for (final r in incReqs) {
+      final rm = Map<String, dynamic>.from(r as Map);
+      final from = rm['from'].toString();
+      final prof = rm['profile'] != null ? Map<String, dynamic>.from(rm['profile'] as Map) : null;
+      final c = await ensureContact(from, profile: prof, initialStatus: FriendshipStatus.requestReceived);
+      c.friendshipStatus = FriendshipStatus.requestReceived;
+    }
+
+    final outReqs = ((data['outgoingRequests'] as List<dynamic>? ?? const [])).map((e) => e.toString()).toSet();
+    for (final to in outReqs) {
+      final c = await ensureContact(to, initialStatus: FriendshipStatus.requestSent);
+      if (c.friendshipStatus != FriendshipStatus.accepted) {
+        c.friendshipStatus = FriendshipStatus.requestSent;
+      }
+    }
+
+    final mutualFriends = ((data['friends'] as List<dynamic>? ?? const [])).map((e) => e.toString()).toSet();
+    for (final f in mutualFriends) {
+      final c = _find(f);
+      if (c != null) {
+        c.friendshipStatus = FriendshipStatus.accepted;
+      }
     }
 
     for (final c in contacts) {
@@ -418,7 +492,11 @@ class ChatService extends ChangeNotifier {
   }
 
   /// Returns the existing contact or creates one from the server profile.
-  Future<ChatContact> ensureContact(String username, {Map<String, dynamic>? profile}) async {
+  Future<ChatContact> ensureContact(
+    String username, {
+    Map<String, dynamic>? profile,
+    FriendshipStatus initialStatus = FriendshipStatus.accepted,
+  }) async {
     final existing = _find(username);
     if (existing != null) return existing;
 
@@ -442,6 +520,7 @@ class ChatService extends ChangeNotifier {
       avatarColor: _parseColor(peer?['avatarColor']),
       statusBio: peer?['bio']?.toString() ?? 'Doodle buddy',
       isOnline: peer?['online'] == true,
+      friendshipStatus: initialStatus,
       lastActive: 'Just now',
     );
     final demoIndex = contacts.indexWhere((x) => x.isDemo);
@@ -451,12 +530,43 @@ class ChatService extends ChangeNotifier {
     return c;
   }
 
+  Future<void> sendFriendRequest(String username, {Map<String, dynamic>? profile}) async {
+    final c = await ensureContact(username, profile: profile, initialStatus: FriendshipStatus.requestSent);
+    c.friendshipStatus = FriendshipStatus.requestSent;
+    _saveContacts();
+    _send({'type': 'send_friend_request', 'to': c.username});
+    notifyListeners();
+  }
+
+  void respondFriendRequest(String username, bool accept) {
+    final c = _find(username);
+    if (c != null) {
+      if (accept) {
+        c.friendshipStatus = FriendshipStatus.accepted;
+      } else {
+        contacts.remove(c);
+      }
+      _saveContacts();
+    }
+    _send({'type': 'respond_friend_request', 'to': username, 'accept': accept});
+    notifyListeners();
+  }
+
   // ───────────────────────── sending / erasing ─────────────────────────
 
   /// Returns false if it could not be sent (offline).
   bool sendDoodle(String contactId, DoodleData doodle) {
     final c = _find(contactId);
     if (c == null) return false;
+
+    if (c.friendshipStatus != FriendshipStatus.accepted && !c.isDemo) {
+      _events.add(ChatEvent(
+        ChatEventType.sendRejected,
+        contact: c,
+        message: 'Waiting for @${c.username} to accept your doodle request first ⏳',
+      ));
+      return false;
+    }
 
     if (c.isDemo) {
       c.pendingDoodle = doodle;

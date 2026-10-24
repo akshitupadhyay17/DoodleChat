@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/chat_contact.dart';
 import '../services/chat_service.dart';
@@ -293,7 +294,48 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 18),
+                  // Incoming Doodle Requests Section
+                  Builder(
+                    builder: (context) {
+                      final pendingRequests = chatService.contacts
+                          .where((c) => c.friendshipStatus == FriendshipStatus.requestReceived)
+                          .toList();
+                      if (pendingRequests.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFC72C),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${pendingRequests.length}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF1E1E26)),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'INCOMING DOODLE REQUESTS',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  color: const Color(0xFFE5A800),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ...pendingRequests.map((req) => _buildRequestCard(context, req, isDark)),
+                          const SizedBox(height: 14),
+                        ],
+                      );
+                    },
+                  ),
 
                   // "+ others (Add) / invite" Row (From Sketch)
                   Row(
@@ -338,30 +380,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Chat Cards List
-                  if (filteredContacts.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: Column(
-                          children: [
-                            const Text('🎨', style: TextStyle(fontSize: 48)),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No chats found',
-                              style: GoogleFonts.gaegu(fontSize: 22, fontWeight: FontWeight.bold),
+                  // Chat Cards List (only accepted or outgoing requests)
+                  Builder(
+                    builder: (context) {
+                      final displayList = filteredContacts
+                          .where((c) => c.friendshipStatus != FriendshipStatus.requestReceived)
+                          .toList();
+                      if (displayList.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(40.0),
+                            child: Column(
+                              children: [
+                                const Text('🎨', style: TextStyle(fontSize: 48)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No chats found',
+                                  style: GoogleFonts.gaegu(fontSize: 22, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Tap "+ others" to send a doodle request!',
+                                  style: GoogleFonts.outfit(color: Colors.grey),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Tap "+ others" to start a live doodle chat!',
-                              style: GoogleFonts.outfit(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ...filteredContacts.map((contact) => _buildContactCard(context, contact, isDark)),
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: displayList.map((contact) => _buildContactCard(context, contact, isDark)).toList(),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -399,12 +450,14 @@ class _HomeScreenState extends State<HomeScreen> {
             // Middle: Floating Quick Draw Doodle Button
             GestureDetector(
               onTap: () {
-                // Open doodle chat with first contact or prompt
-                if (chatService.contacts.isNotEmpty) {
+                final ready = chatService.contacts
+                    .where((c) => c.friendshipStatus == FriendshipStatus.accepted)
+                    .toList();
+                if (ready.isNotEmpty) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ChatScreen(contact: chatService.contacts.first),
+                      builder: (_) => ChatScreen(contact: ready.first),
                     ),
                   );
                 } else {
@@ -454,13 +507,111 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildRequestCard(BuildContext context, ChatContact contact, bool isDark) {
+    final chatService = ChatService();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF22202C) : const Color(0xFFFFF9E6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFC72C), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFC72C).withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: contact.avatarColor.withOpacity(0.25),
+              shape: BoxShape.circle,
+              border: Border.all(color: contact.avatarColor, width: 2),
+            ),
+            child: Center(
+              child: Text(contact.avatarEmoji, style: const TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '@${contact.username}',
+                      style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFC72C).withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('Wants to doodle!', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                Text(
+                  contact.name,
+                  style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              chatService.respondFriendRequest(contact.username, true);
+              HapticFeedback.mediumImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Accepted @${contact.username}! Start doodling 🎨'),
+                  backgroundColor: const Color(0xFF00B894),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFC72C),
+              foregroundColor: const Color(0xFF1E1E26),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Accept 🦆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+            tooltip: 'Decline',
+            onPressed: () {
+              chatService.respondFriendRequest(contact.username, false);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContactCard(BuildContext context, ChatContact contact, bool isDark) {
     Color statusBgColor = Colors.transparent;
     Color statusTextColor = Colors.grey;
     String statusLabel = 'Ready to doodle';
     IconData statusIcon = Icons.edit_note_rounded;
 
-    if (contact.doodleStatus == DoodleChatStatus.receivedMustErase) {
+    if (contact.friendshipStatus == FriendshipStatus.requestSent) {
+      statusBgColor = const Color(0xFF6C5CE7).withOpacity(0.15);
+      statusTextColor = const Color(0xFF6C5CE7);
+      statusLabel = 'Request sent • Waiting for approval ⏳';
+      statusIcon = Icons.hourglass_top_rounded;
+    } else if (contact.doodleStatus == DoodleChatStatus.receivedMustErase) {
       statusBgColor = const Color(0xFFFF4081).withOpacity(0.15);
       statusTextColor = const Color(0xFFFF4081);
       statusLabel = 'Doodle received • Must erase!';

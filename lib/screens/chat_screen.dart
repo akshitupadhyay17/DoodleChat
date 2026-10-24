@@ -118,6 +118,15 @@ class _ChatScreenState extends State<ChatScreen> {
       _toast(e.message ?? 'Could not send.', const Color(0xFFFF4081));
     } else if (e.type == ChatEventType.incomingDoodle) {
       HapticFeedback.mediumImpact();
+    } else if (e.type == ChatEventType.friendRequestAccepted) {
+      HapticFeedback.heavyImpact();
+      _confetti.play();
+      _doodle.locked = false;
+      _toast('${_contact.name} accepted your doodle request! Canvas unlocked 🎨', const Color(0xFF00B894));
+      setState(() {});
+    } else if (e.type == ChatEventType.friendRequestDeclined) {
+      _toast('${_contact.name} declined the request.', Colors.grey);
+      setState(() {});
     }
   }
 
@@ -529,6 +538,13 @@ class _ChatScreenState extends State<ChatScreen> {
     final status = _contact.doodleStatus;
     final isMustErase = status == DoodleChatStatus.receivedMustErase;
     final isSentWaiting = status == DoodleChatStatus.sentWaitingForErase;
+    final isRequestSent = _contact.friendshipStatus == FriendshipStatus.requestSent;
+    final isRequestReceived = _contact.friendshipStatus == FriendshipStatus.requestReceived;
+    final isBlocked = isRequestSent || isRequestReceived;
+
+    if (isBlocked && !_doodle.locked) {
+      _doodle.locked = true;
+    }
 
     return Scaffold(
       backgroundColor: _getCanvasBackgroundColor(isDark),
@@ -547,11 +563,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     curve: Curves.easeOutCubic,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 280),
-                      child: isMustErase
-                          ? _buildMustEraseBanner()
-                          : isSentWaiting
-                              ? _buildSentWaitingBanner()
-                              : const SizedBox(width: double.infinity, key: ValueKey('none')),
+                      child: isRequestReceived
+                          ? _buildRequestReceivedBanner()
+                          : isRequestSent
+                              ? _buildRequestSentBanner()
+                              : isMustErase
+                                  ? _buildMustEraseBanner()
+                                  : isSentWaiting
+                                      ? _buildSentWaitingBanner()
+                                      : const SizedBox(width: double.infinity, key: ValueKey('none')),
                     ),
                   ),
 
@@ -572,11 +592,58 @@ class _ChatScreenState extends State<ChatScreen> {
                                 )
                               : DoodleCanvas(controller: _doodle),
 
+                          // Lock overlay when waiting for request approval
+                          if (isBlocked)
+                            IgnorePointer(
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 72,
+                                        height: 72,
+                                        decoration: BoxDecoration(
+                                          color: isRequestReceived
+                                              ? const Color(0xFFFFC72C).withValues(alpha: 0.2)
+                                              : const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Icon(
+                                            isRequestReceived ? Icons.mail_outline_rounded : Icons.lock_outline_rounded,
+                                            size: 36,
+                                            color: isRequestReceived ? const Color(0xFFE5A800) : const Color(0xFF6C5CE7),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      Text(
+                                        isRequestReceived
+                                            ? 'Doodle Request Received 💌'
+                                            : 'Doodle Request Pending ⏳',
+                                        style: GoogleFonts.gaegu(fontSize: 26, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        isRequestReceived
+                                            ? 'Accept ${_contact.name}\'s request above to unlock the canvas!'
+                                            : 'Waiting for @${_contact.username} to accept your doodle request.',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.patrickHand(fontSize: 16, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
                           // Empty canvas hint when idle
                           ListenableBuilder(
                             listenable: _doodle,
                             builder: (context, _) {
-                              final show = !isMustErase && !isSentWaiting && _doodle.isEmpty;
+                              final show = !isMustErase && !isSentWaiting && !isBlocked && _doodle.isEmpty;
                               return IgnorePointer(
                                 child: AnimatedOpacity(
                                   duration: const Duration(milliseconds: 250),
@@ -608,7 +675,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             listenable: _doodle,
                             builder: (context, _) {
                               final stamp = _doodle.stampEmoji;
-                              if (stamp == null || isSentWaiting || isMustErase) {
+                              if (stamp == null || isSentWaiting || isMustErase || isBlocked) {
                                 return const SizedBox.shrink();
                               }
                               return Positioned(
@@ -671,10 +738,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
 
                   // Floating Toolbar (Colors, Brush size, Eraser, Clear)
-                  if (!isSentWaiting && !isMustErase) _buildDrawingToolbar(isDark),
+                  if (!isSentWaiting && !isMustErase && !isBlocked) _buildDrawingToolbar(isDark),
 
                   // Bottom Input Bar (write text, mic, send) - From Sketch
-                  if (!isSentWaiting && !isMustErase) _buildBottomInputBar(isDark),
+                  if (!isSentWaiting && !isMustErase && !isBlocked) _buildBottomInputBar(isDark),
                 ],
               ),
 
@@ -789,6 +856,155 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildRequestReceivedBanner() {
+    return Container(
+      key: const ValueKey('request-received'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFC72C).withValues(alpha: 0.22),
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFFFFC72C), width: 1.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFC72C).withValues(alpha: 0.4),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text('🦆', style: TextStyle(fontSize: 20)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_contact.name} sent a Doodle Request!',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2D3436),
+                  ),
+                ),
+                Text(
+                  'Accept to allow exchanging private doodles.',
+                  style: GoogleFonts.patrickHand(fontSize: 13, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () {
+              _service.respondFriendRequest(_contact.username, false);
+              HapticFeedback.lightImpact();
+              _toast('Request declined', Colors.grey);
+              Navigator.of(context).maybePop();
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(60, 34),
+              side: BorderSide(color: Colors.grey.shade400),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Decline', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade700)),
+          ),
+          const SizedBox(width: 6),
+          ElevatedButton(
+            onPressed: () {
+              _service.respondFriendRequest(_contact.username, true);
+              HapticFeedback.heavyImpact();
+              _confetti.play();
+              _doodle.locked = false;
+              _toast('Request accepted! Canvas unlocked 🎨', const Color(0xFF00B894));
+              setState(() {});
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFC72C),
+              foregroundColor: const Color(0xFF1E1E26),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              minimumSize: const Size(70, 34),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Accept 🦆', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestSentBanner() {
+    return Container(
+      key: const ValueKey('request-sent'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6C5CE7).withValues(alpha: 0.16),
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFF6C5CE7), width: 1.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.25),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(Icons.hourglass_top_rounded, color: Color(0xFF6C5CE7), size: 20),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Doodle Request Sent ⏳',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF6C5CE7),
+                  ),
+                ),
+                Text(
+                  'Waiting for @${_contact.username} to accept before sending doodles.',
+                  style: GoogleFonts.patrickHand(fontSize: 13, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Pending',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF6C5CE7),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMustEraseBanner() {
     return Container(
       key: const ValueKey('must-erase'),
@@ -825,7 +1041,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: p),
                       duration: const Duration(milliseconds: 160),
-                      builder: (_, v, __) => LinearProgressIndicator(
+                      builder: (_, v, child) => LinearProgressIndicator(
                         value: v,
                         backgroundColor: Colors.white38,
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF4081)),

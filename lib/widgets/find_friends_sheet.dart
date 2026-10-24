@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../models/chat_contact.dart';
 import '../screens/chat_screen.dart';
 import '../services/chat_service.dart';
 
@@ -74,11 +75,31 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
       });
       return;
     }
-    final contact = await service.ensureContact(handle, profile: profile);
-    if (!mounted) return;
+
+    final existing = service.contacts.cast<ChatContact?>().firstWhere(
+          (c) => c?.username == handle,
+          orElse: () => null,
+        );
+
     final nav = Navigator.of(context);
+    if (existing != null && existing.friendshipStatus == FriendshipStatus.accepted) {
+      nav.pop();
+      nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+      return;
+    }
+
+    // Send doodle request
+    await service.sendFriendRequest(handle, profile: profile);
+    final contact = await service.ensureContact(handle, profile: profile, initialStatus: FriendshipStatus.requestSent);
+    if (!mounted) return;
     nav.pop();
     nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Doodle request sent to @$handle! ⏳'),
+        backgroundColor: const Color(0xFFFFC72C),
+      ),
+    );
   }
 
   Future<void> _scan() async {
@@ -320,20 +341,69 @@ class _PeerTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.patrickHand(fontSize: 15),
         ),
-        trailing: ElevatedButton(
-          onPressed: () async {
-            final nav = Navigator.of(context);
-            final contact = await ChatService().ensureContact(user, profile: peer);
-            nav.pop();
-            nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
+        trailing: Builder(
+          builder: (context) {
+            final service = ChatService();
+            final existing = service.contacts.cast<ChatContact?>().firstWhere(
+                  (c) => c?.username == user,
+                  orElse: () => null,
+                );
+            final isAccepted = existing != null && existing.friendshipStatus == FriendshipStatus.accepted;
+            final isPending = existing != null && existing.friendshipStatus == FriendshipStatus.requestSent;
+            final isReceived = existing != null && existing.friendshipStatus == FriendshipStatus.requestReceived;
+
+            String label = 'Request 🦆';
+            Color bg = const Color(0xFFFFC72C);
+            if (isAccepted) {
+              label = 'Chat ➔';
+            } else if (isReceived) {
+              label = 'Accept 🦆';
+              bg = const Color(0xFF00B894);
+            } else if (isPending) {
+              label = 'Pending ⏳';
+              bg = const Color(0xFF6C5CE7);
+            }
+
+            return ElevatedButton(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
+                if (isAccepted) {
+                  nav.pop();
+                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+                } else if (isReceived) {
+                  service.respondFriendRequest(user, true);
+                  nav.pop();
+                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+                } else if (isPending) {
+                  nav.pop();
+                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+                } else {
+                  await service.sendFriendRequest(user, profile: peer);
+                  final contact = await service.ensureContact(
+                    user,
+                    profile: peer,
+                    initialStatus: FriendshipStatus.requestSent,
+                  );
+                  nav.pop();
+                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Doodle request sent to @$user! ⏳'),
+                      backgroundColor: const Color(0xFFFFC72C),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: bg,
+                foregroundColor: (isReceived || isPending) ? Colors.white : const Color(0xFF1E1E26),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFC72C),
-            foregroundColor: const Color(0xFF1E1E26),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Chat ➔', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ),
     );

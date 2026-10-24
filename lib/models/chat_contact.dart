@@ -7,6 +7,12 @@ enum DoodleChatStatus {
   receivedMustErase, // Friend sent one, you MUST erase it before replying
 }
 
+enum FriendshipStatus {
+  accepted, // Mutual doodle friends! Can doodle back and forth.
+  requestSent, // You sent a request to them, waiting for them to accept.
+  requestReceived, // They sent a request to you, waiting for your approval.
+}
+
 class ChatContact {
   final String id;
   final String name;
@@ -17,6 +23,7 @@ class ChatContact {
   final String statusBio;
   String lastActive;
   DoodleChatStatus doodleStatus;
+  FriendshipStatus friendshipStatus;
   DoodleData? pendingDoodle;
   String chatTheme;
 
@@ -37,6 +44,7 @@ class ChatContact {
     this.statusBio = "Doodling something cool 🎨",
     this.lastActive = "Just now",
     this.doodleStatus = DoodleChatStatus.idle,
+    this.friendshipStatus = FriendshipStatus.accepted,
     this.pendingDoodle,
     this.chatTheme = 'Default',
     this.isDemo = false,
@@ -50,6 +58,7 @@ class ChatContact {
         'color': avatarColor.toARGB32(),
         'bio': statusBio,
         'theme': chatTheme,
+        'friendship': friendshipStatus.name,
       };
 
   factory ChatContact.fromJson(Map<String, dynamic> j) => ChatContact(
@@ -60,6 +69,10 @@ class ChatContact {
         avatarColor: Color((j['color'] as num?)?.toInt() ?? 0xFFFFC72C),
         statusBio: j['bio'] as String? ?? '',
         chatTheme: j['theme'] as String? ?? 'Default',
+        friendshipStatus: FriendshipStatus.values.firstWhere(
+          (e) => e.name == j['friendship'],
+          orElse: () => FriendshipStatus.accepted,
+        ),
         isOnline: false,
         lastActive: 'Saved',
       );
