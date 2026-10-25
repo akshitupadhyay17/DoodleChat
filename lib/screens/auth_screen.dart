@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/chat_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/square_image_cropper_dialog.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -55,14 +56,21 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       final xfile = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 90,
       );
       if (xfile == null) return;
       final bytes = await xfile.readAsBytes();
+      if (!mounted) return;
+      final croppedBase64 = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SquareImageCropperDialog(imageBytes: bytes),
+      );
+      if (croppedBase64 == null) return;
       setState(() {
-        _selectedPhotoBase64 = base64Encode(bytes);
+        _selectedPhotoBase64 = croppedBase64;
       });
       HapticFeedback.mediumImpact();
     } catch (e) {

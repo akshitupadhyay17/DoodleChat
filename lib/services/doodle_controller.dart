@@ -290,6 +290,10 @@ class DoodleController extends ChangeNotifier {
   // ───────────────────────── tool settings ─────────────────────────
 
   void setEraser(bool v) {
+    if (mustErase) {
+      eraser = true;
+      return;
+    }
     eraser = v;
     if (v) {
       stampEmoji = null;
@@ -301,6 +305,7 @@ class DoodleController extends ChangeNotifier {
   }
 
   void setColor(Color c) {
+    if (mustErase) return;
     color = c;
     eraser = false;
     stampEmoji = null;
@@ -308,6 +313,7 @@ class DoodleController extends ChangeNotifier {
   }
 
   void setBrushType(DoodleBrushType type) {
+    if (mustErase) return;
     brushType = type;
     eraser = false;
     stampEmoji = null;
@@ -315,6 +321,7 @@ class DoodleController extends ChangeNotifier {
   }
 
   void setStampEmoji(String? emoji) {
+    if (mustErase) return;
     stampEmoji = emoji;
     if (emoji != null) eraser = false;
     notifyListeners();
@@ -594,7 +601,8 @@ class DoodleController extends ChangeNotifier {
       }
     }
 
-    if (eraser) {
+    if (mustErase || eraser) {
+      eraser = true;
       eraserPos = v;
       _eraseAt(v);
       live.bump();
@@ -631,7 +639,8 @@ class DoodleController extends ChangeNotifier {
   void pointerMove(Offset screen) {
     if (locked || _ignorePointerUntilUp) return;
     final v = screen / scale;
-    if (eraser) {
+    if (mustErase || eraser) {
+      eraser = true;
       eraserPos = v;
       _eraseAt(v);
       live.bump();
@@ -679,7 +688,7 @@ class DoodleController extends ChangeNotifier {
       return;
     }
     if (locked) return;
-    if (eraser) {
+    if (mustErase || eraser) {
       eraserPos = null;
       live.bump();
       return;

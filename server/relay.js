@@ -51,6 +51,7 @@ function publicProfile(p) {
     name: p.name,
     avatarEmoji: p.avatarEmoji,
     avatarColor: p.avatarColor,
+    avatarPhoto: p.avatarPhoto || null,
     bio: p.bio,
     online: sockets.has(p.username),
   };
@@ -216,6 +217,7 @@ wss.on('connection', (ws) => {
           name: data.name || username,
           avatarEmoji: data.avatarEmoji || '🦆',
           avatarColor: data.avatarColor || '#FFC72C',
+          avatarPhoto: data.avatarPhoto || null,
           bio: data.bio || 'Doodling away ✨',
         });
         sockets.set(username, ws);
@@ -233,6 +235,26 @@ wss.on('connection', (ws) => {
       case 'lookup': {
         const p = profiles.get(norm(data.username));
         send(ws, { type: 'lookup_result', reqId: data.reqId, profile: p ? publicProfile(p) : null });
+        break;
+      }
+
+      case 'profile_update': {
+        if (!me) return;
+        const p = profiles.get(me) || { username: me, clientId: '' };
+        if (data.name) p.name = data.name;
+        if (data.avatarEmoji) p.avatarEmoji = data.avatarEmoji;
+        if (data.avatarColor) p.avatarColor = data.avatarColor;
+        if (data.avatarPhoto !== undefined) p.avatarPhoto = data.avatarPhoto;
+        if (data.bio) p.bio = data.bio;
+        profiles.set(me, p);
+        broadcastOnlineUsers();
+        for (const f of friends) {
+          const [a, b] = f.split('<>');
+          const other = (a === me) ? b : (b === me ? a : null);
+          if (other) {
+            sendTo(other, { type: 'peer_profile_updated', from: me, profile: publicProfile(p) });
+          }
+        }
         break;
       }
 

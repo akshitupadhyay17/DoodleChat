@@ -111,6 +111,17 @@ class ChatService extends ChangeNotifier {
     }
     await p.setBool('onboarded', isOnboarded);
     await p.setBool('loggedIn', isLoggedIn);
+
+    if (isLoggedIn && _channel != null) {
+      _send({
+        'type': 'profile_update',
+        'name': currentUser.username,
+        'avatarEmoji': currentUser.avatarEmoji,
+        'avatarColor': '#${currentUser.avatarColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'avatarPhoto': currentUser.profilePicBase64,
+        'bio': currentUser.bio,
+      });
+    }
   }
 
   Future<void> signOut() async {
@@ -200,6 +211,8 @@ class ChatService extends ChangeNotifier {
       'name': currentUser.username,
       'avatarEmoji': currentUser.avatarEmoji,
       'avatarColor': '#${currentUser.avatarColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      if (currentUser.profilePicBase64 != null && currentUser.profilePicBase64!.isNotEmpty)
+        'avatarPhoto': currentUser.profilePicBase64,
       'bio': currentUser.bio,
     });
   }
@@ -350,6 +363,22 @@ class ChatService extends ChangeNotifier {
         if (c != null) c.peerDrawing.value = data['active'] == true;
         break;
 
+      case 'peer_profile_updated': {
+        final from = (data['from'] ?? '').toString();
+        final prof = data['profile'] != null ? Map<String, dynamic>.from(data['profile'] as Map) : null;
+        if (prof != null) {
+          final c = _find(from);
+          if (c != null) {
+            if (prof['avatarPhoto'] != null) c.avatarPhotoBase64 = prof['avatarPhoto'].toString();
+            if (prof['avatarEmoji'] != null) c.avatarEmoji = prof['avatarEmoji'].toString();
+            if (prof['name'] != null) c.name = prof['name'].toString();
+            _saveContacts();
+            notifyListeners();
+          }
+        }
+        break;
+      }
+
       case 'incoming_friend_request': {
         final from = (data['from'] ?? '').toString();
         final prof = data['profile'] != null ? Map<String, dynamic>.from(data['profile'] as Map) : null;
@@ -472,6 +501,14 @@ class ChatService extends ChangeNotifier {
       if (!c.isDemo) {
         c.isOnline = onlineNames.contains(c.username);
         if (!c.isOnline) c.peerDrawing.value = false;
+        final p = onlinePeers.cast<Map<String, dynamic>?>().firstWhere(
+              (x) => x?['username'] == c.username,
+              orElse: () => null,
+            );
+        final photo = p?['avatarPhoto']?.toString();
+        if (photo != null && photo.isNotEmpty && c.avatarPhotoBase64 != photo) {
+          c.avatarPhotoBase64 = photo;
+        }
       }
     }
   }
@@ -603,7 +640,14 @@ class ChatService extends ChangeNotifier {
 
     // Another call may have created it while we awaited.
     final again = _find(lower);
-    if (again != null) return again;
+    if (again != null) {
+      final photo = peer?['avatarPhoto']?.toString() ?? peer?['photo']?.toString();
+      if (photo != null && photo.isNotEmpty) {
+        again.avatarPhotoBase64 = photo;
+        _saveContacts();
+      }
+      return again;
+    }
 
     final c = ChatContact(
       id: lower,
@@ -611,6 +655,7 @@ class ChatService extends ChangeNotifier {
       username: lower,
       avatarEmoji: peer?['avatarEmoji']?.toString() ?? '🎨',
       avatarColor: _parseColor(peer?['avatarColor']),
+      avatarPhotoBase64: peer?['avatarPhoto']?.toString() ?? peer?['photo']?.toString(),
       statusBio: peer?['bio']?.toString() ?? 'Doodle buddy',
       isOnline: peer?['online'] == true,
       friendshipStatus: initialStatus,

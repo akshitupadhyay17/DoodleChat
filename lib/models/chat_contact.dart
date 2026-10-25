@@ -15,10 +15,10 @@ enum FriendshipStatus {
 
 class ChatContact {
   final String id;
-  final String name;
+  String name;
   final String username;
-  final String avatarEmoji;
-  final Color avatarColor;
+  String avatarEmoji;
+  Color avatarColor;
   String? avatarPhotoBase64;
   bool isOnline;
   final String statusBio;
@@ -79,6 +79,7 @@ class ChatContact {
         username: j['username'] as String,
         avatarEmoji: j['emoji'] as String? ?? '🦆',
         avatarColor: Color((j['color'] as num?)?.toInt() ?? 0xFFFFC72C),
+        avatarPhotoBase64: (j['photo'] ?? j['avatarPhoto']) as String?,
         statusBio: j['bio'] as String? ?? '',
         chatTheme: j['theme'] as String? ?? 'Default',
         friendshipStatus: FriendshipStatus.values.firstWhere(

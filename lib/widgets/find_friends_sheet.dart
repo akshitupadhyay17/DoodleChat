@@ -6,6 +6,7 @@ import '../models/chat_contact.dart';
 import '../screens/chat_screen.dart';
 import '../services/chat_service.dart';
 import '../theme/app_theme.dart';
+import 'doodle_avatar.dart';
 
 /// "Find & connect friends": live online list, @handle / link entry and a real QR scanner.
 Future<void> showFindFriendsSheet(BuildContext context) {
@@ -365,14 +366,11 @@ class _PeerTile extends StatelessWidget {
         ),
       ),
       child: ListTile(
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: AppTheme.electricPink.withOpacity(0.18),
-            shape: BoxShape.circle,
-          ),
-          child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+        leading: DoodleAvatar(
+          emoji: emoji,
+          color: AppTheme.electricPink.withOpacity(0.18),
+          photoBase64: peer['avatarPhoto']?.toString(),
+          radius: 21,
         ),
         title: Text(
           '@$user',

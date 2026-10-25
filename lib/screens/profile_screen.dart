@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +8,7 @@ import '../services/chat_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/doodle_avatar.dart';
 import '../widgets/social_logos.dart';
+import '../widgets/square_image_cropper_dialog.dart';
 import 'onboarding_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -478,15 +478,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final xfile = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 90,
       );
       if (xfile == null) return;
       final bytes = await xfile.readAsBytes();
-      final base64Str = base64Encode(bytes);
+      if (!mounted) return;
+      final croppedBase64 = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SquareImageCropperDialog(imageBytes: bytes),
+      );
+      if (croppedBase64 == null) return;
       final user = ChatService().currentUser;
-      user.profilePicBase64 = base64Str;
+      user.profilePicBase64 = croppedBase64;
       await ChatService().saveProfile();
       setState(() {});
       HapticFeedback.mediumImpact();

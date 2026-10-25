@@ -87,10 +87,12 @@ class _ChatScreenState extends State<ChatScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark || _service.currentUser.isDarkMode;
     if (_lastThemeDark != isDark) {
       _lastThemeDark = isDark;
-      if (isDark) {
-        _doodle.setBrushType(DoodleBrushType.neon);
-      } else {
-        _doodle.setBrushType(DoodleBrushType.pen);
+      if (!_doodle.mustErase) {
+        if (isDark) {
+          _doodle.setBrushType(DoodleBrushType.neon);
+        } else {
+          _doodle.setBrushType(DoodleBrushType.pen);
+        }
       }
     }
   }
@@ -123,6 +125,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _doodle.locked = false;
           _doodle.load(d, forErasing: true);
         }
+        _doodle.mustErase = true;
+        _doodle.eraser = true;
         break;
       case DoodleChatStatus.sentWaitingForErase:
         if (d != null && _loadedDoodleId != d.id) {
