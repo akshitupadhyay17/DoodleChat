@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // WhatsApp (Official Logo)
                     Expanded(
                       child: _buildShareTile(
-                        iconWidget: const WhatsAppLogoWidget(size: 34),
+                        iconWidget: const WhatsAppLogoWidget(size: 36),
                         label: 'WhatsApp',
                         color: const Color(0xFF25D366),
                         onTap: () {
@@ -162,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Instagram (Official Logo)
                     Expanded(
                       child: _buildShareTile(
-                        iconWidget: const InstagramLogoWidget(size: 34),
+                        iconWidget: const InstagramLogoWidget(size: 36),
                         label: 'Instagram',
                         color: const Color(0xFFE1306C),
                         onTap: () {
@@ -182,15 +182,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Expanded(
                       child: _buildShareTile(
                         iconWidget: Container(
-                          width: 34,
-                          height: 34,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
                             color: AppTheme.cyberViolet.withOpacity(0.18),
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.cyberViolet.withOpacity(0.3), width: 1.5),
+                            border: Border.all(color: AppTheme.cyberViolet.withOpacity(0.35), width: 1.5),
                           ),
                           child: const Center(
-                            child: Icon(Icons.link_rounded, color: AppTheme.cyberViolet, size: 20),
+                            child: Icon(Icons.link_rounded, color: AppTheme.cyberViolet, size: 21),
                           ),
                         ),
                         label: 'Copy Link',
@@ -240,13 +240,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.20), width: 1),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withOpacity(0.24), width: 1.2),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -258,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w800,
                 color: color,
               ),
