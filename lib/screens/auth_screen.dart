@@ -151,15 +151,18 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // ───────────────────────── STEP 1: USERNAME ─────────────────────────
   Widget _buildUsernameStep(bool isDark) {
-    return Padding(
+    return SingleChildScrollView(
       key: const ValueKey('step-username'),
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
 
           // Header
           Row(
@@ -299,7 +302,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
 
-          const Spacer(),
+          const SizedBox(height: 36),
 
           // CTA Continue Button
           Container(
@@ -352,8 +355,10 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-        ],
+          const SizedBox(height: 24),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -362,10 +367,14 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildProfileStep(bool isDark) {
     return SingleChildScrollView(
       key: const ValueKey('step-profile'),
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -675,7 +684,9 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
 
           const SizedBox(height: 24),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

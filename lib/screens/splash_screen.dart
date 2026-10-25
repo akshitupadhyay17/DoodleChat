@@ -103,146 +103,167 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
 
           SafeArea(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const SizedBox(height: 16),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Sleek Brand Emblem (Glowing squircle with ribbon doodle mark)
+                                Container(
+                                  width: 108,
+                                  height: 108,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF1E202E),
+                                        Color(0xFF12131C),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(32),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.12),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.electricPink.withOpacity(0.25),
+                                        blurRadius: 36,
+                                        offset: const Offset(0, 12),
+                                      ),
+                                      BoxShadow(
+                                        color: AppTheme.cyberViolet.withOpacity(0.2),
+                                        blurRadius: 40,
+                                        offset: const Offset(0, 16),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      CustomPaint(
+                                        size: const Size(64, 64),
+                                        painter: _DoodleRibbonPainter(),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                    .animate()
+                                    .scale(
+                                      duration: 800.ms,
+                                      curve: Curves.easeOutBack,
+                                      begin: const Offset(0.7, 0.7),
+                                      end: const Offset(1, 1),
+                                    )
+                                    .fade(duration: 600.ms),
 
-                  // Sleek Brand Emblem (Glowing squircle with ribbon doodle mark)
-                  Container(
-                    width: 108,
-                    height: 108,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF1E202E),
-                          Color(0xFF12131C),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.12),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.electricPink.withOpacity(0.25),
-                          blurRadius: 36,
-                          offset: const Offset(0, 12),
-                        ),
-                        BoxShadow(
-                          color: AppTheme.cyberViolet.withOpacity(0.2),
-                          blurRadius: 40,
-                          offset: const Offset(0, 16),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(64, 64),
-                          painter: _DoodleRibbonPainter(),
-                        ),
-                      ],
-                    ),
-                  )
-                      .animate()
-                      .scale(
-                        duration: 800.ms,
-                        curve: Curves.easeOutBack,
-                        begin: const Offset(0.7, 0.7),
-                        end: const Offset(1, 1),
-                      )
-                      .fade(duration: 600.ms),
+                                const SizedBox(height: 32),
 
-                  const SizedBox(height: 32),
+                                // Brand Title
+                                ShaderMask(
+                                  shaderCallback: (bounds) => const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFFFFFF),
+                                      Color(0xFFF0F3FF),
+                                      Color(0xFFFFD6E0),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ).createShader(bounds),
+                                  child: Text(
+                                    'doodle',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 44,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -1.2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ).animate().fadeIn(delay: 200.ms, duration: 600.ms).slideY(begin: 0.2, end: 0),
 
-                  // Brand Title
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [
-                        Color(0xFFFFFFFF),
-                        Color(0xFFF0F3FF),
-                        Color(0xFFFFD6E0),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: Text(
-                      'doodle',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 44,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 200.ms, duration: 600.ms).slideY(begin: 0.2, end: 0),
+                                const SizedBox(height: 8),
 
-                  const SizedBox(height: 8),
+                                // Tagline
+                                Text(
+                                  'handwritten • ephemeral • real-time',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.4,
+                                    color: const Color(0xFF8A90A6),
+                                  ),
+                                ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
+                              ],
+                            ),
 
-                  // Tagline
-                  Text(
-                    'handwritten • ephemeral • real-time',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.4,
-                      color: const Color(0xFF8A90A6),
-                    ),
-                  ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
+                            const SizedBox(height: 32),
 
-                  const Spacer(),
-
-                  // Anti-Screenshot / Privacy Pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.08),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.acidLime,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.acidLime,
-                                blurRadius: 6,
+                            // Anti-Screenshot / Privacy Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.08),
+                                  width: 1,
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Zero Digital Footprint • Anti-Screenshot',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
-                            color: const Color(0xFFA5ABC0),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: 600.ms, duration: 600.ms),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppTheme.acidLime,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppTheme.acidLime,
+                                          blurRadius: 6,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      'Zero Digital Footprint • Anti-Screenshot',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.2,
+                                        color: const Color(0xFFA5ABC0),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ).animate().fadeIn(delay: 600.ms, duration: 600.ms),
 
-                  const SizedBox(height: 28),
-                ],
-              ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],

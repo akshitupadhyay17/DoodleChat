@@ -71,18 +71,16 @@ class OnboardingScreen extends StatelessWidget {
           ),
 
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 12),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              physics: const BouncingScrollPhysics(),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
 
                   // Minimalist Brand Ribbon Header
                   Row(
@@ -117,14 +115,13 @@ class OnboardingScreen extends StatelessWidget {
                     ],
                   ).animate().fadeIn(duration: 400.ms),
 
-                  const Spacer(flex: 1),
+                  const SizedBox(height: 24),
 
                   // Hero visual illustration card (Simulating an active ephemeral canvas exchange)
                   Center(
                     child: Container(
                       width: double.infinity,
-                      height: 200,
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       decoration: BoxDecoration(
                         color: isDark ? AppTheme.darkCard : Colors.white,
                         borderRadius: BorderRadius.circular(28),
@@ -142,30 +139,38 @@ class OnboardingScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Stack(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Top bar inside card
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: AppTheme.electricPink.withOpacity(0.2),
-                                    child: const Text('✨', style: TextStyle(fontSize: 12)),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '@alex • drawing now',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.electricPink,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: AppTheme.electricPink.withOpacity(0.2),
+                                      child: const Text('✨', style: TextStyle(fontSize: 12)),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        '@alex • drawing now',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.electricPink,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
@@ -183,42 +188,39 @@ class OnboardingScreen extends StatelessWidget {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 18),
+
                           // Simulated neon doodle stroke in card
-                          Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ShaderMask(
-                                  shaderCallback: (bounds) => const LinearGradient(
-                                    colors: [
-                                      AppTheme.electricPink,
-                                      AppTheme.cyberViolet,
-                                      AppTheme.neonYellow,
-                                    ],
-                                  ).createShader(bounds),
-                                  child: Text(
-                                    'Meet up tonight? ⚡️',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Erase completely to unlock your reply canvas',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: isDark ? const Color(0xFF7A8098) : const Color(0xFF8C92A4),
-                                  ),
-                                ),
+                          ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [
+                                AppTheme.electricPink,
+                                AppTheme.cyberViolet,
+                                AppTheme.neonYellow,
                               ],
+                            ).createShader(bounds),
+                            child: Text(
+                              'Meet up tonight? ⚡️',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Erase completely to unlock your reply canvas',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? const Color(0xFF7A8098) : const Color(0xFF8C92A4),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                         ],
                       ),
                     ),
@@ -249,7 +251,7 @@ class OnboardingScreen extends StatelessWidget {
                     ),
                   ).animate().fadeIn(delay: 350.ms),
 
-                  const Spacer(flex: 2),
+                  const SizedBox(height: 24),
 
                   // Feature Pills
                   _buildFeatureRow(
@@ -270,7 +272,7 @@ class OnboardingScreen extends StatelessWidget {
                     subtitle: 'Your friend rubs out your doodle before drawing back.',
                   ).animate().fadeIn(delay: 550.ms).slideX(begin: 0.1, end: 0),
 
-                  const Spacer(flex: 2),
+                  const SizedBox(height: 28),
 
                   // Bottom CTA Button — iOS 18-styled frosted gradient capsule
                   Container(
@@ -326,15 +328,12 @@ class OnboardingScreen extends StatelessWidget {
                   ).animate().fadeIn(delay: 650.ms).slideY(begin: 0.2, end: 0),
 
                   const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
-        ),
         ],
       ),
     );

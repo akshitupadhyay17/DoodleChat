@@ -159,12 +159,16 @@ class _StoryViewerSheetState extends State<StoryViewerSheet> with SingleTickerPr
                       children: [
                         Row(
                           children: [
-                            Text(
-                              widget.senderName,
-                              style: GoogleFonts.outfit(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                            Flexible(
+                              child: Text(
+                                widget.senderName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),

@@ -70,7 +70,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Add to ${widget.group.name}', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800)),
+                    Expanded(
+                      child: Text(
+                        'Add to ${widget.group.name}',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
+                    ),
                     IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),

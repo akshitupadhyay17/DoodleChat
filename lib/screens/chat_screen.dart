@@ -1066,6 +1066,8 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Text(
                   '${_contact.name} sent a doodle!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -1074,6 +1076,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 Text(
                   'Erase it completely with your finger to reply ✨',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
                 ),
                 const SizedBox(height: 5),
@@ -1133,6 +1137,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       erasing
                           ? '${_contact.name} is erasing… ${(p * 100).round()}%'
                           : 'Doodle Delivered & Locked 🔒',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -1143,7 +1149,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       erasing
                           ? 'Watch it vanish live 👀'
                           : 'Waiting for ${_contact.name} to view & erase before you can send another.',
-                      style: GoogleFonts.patrickHand(fontSize: 14),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
                     ),
                   ],
                 );

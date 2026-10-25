@@ -785,12 +785,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             const Icon(Icons.qr_code_2_rounded, color: AppTheme.electricPink, size: 20),
                             const SizedBox(width: 8),
-                            Text(
-                              'Doodle Pass',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: isDark ? Colors.white : const Color(0xFF0E1017),
+                            Flexible(
+                              child: Text(
+                                'Doodle Pass',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                ),
                               ),
                             ),
                           ],
@@ -835,12 +839,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             const Icon(Icons.copy_rounded, color: AppTheme.cyberViolet, size: 18),
                             const SizedBox(width: 8),
-                            Text(
-                              'Copy Link',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: isDark ? Colors.white : const Color(0xFF0E1017),
+                            Flexible(
+                              child: Text(
+                                'Copy Link',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                ),
                               ),
                             ),
                           ],
@@ -854,23 +862,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
 
               // Grouped iOS Settings Container
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkCard : Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              Material(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                clipBehavior: Clip.antiAlias,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
                     // Theme Switch
                     ListTile(
                       leading: Container(
@@ -972,6 +983,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+            ),
 
               const SizedBox(height: 28),
 
@@ -988,12 +1000,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'doodle • ephemeral by design',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF8A90A6),
+                  Flexible(
+                    child: Text(
+                      'doodle • ephemeral by design',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF8A90A6),
+                      ),
                     ),
                   ),
                 ],

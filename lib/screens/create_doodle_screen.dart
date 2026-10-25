@@ -701,7 +701,13 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                             ),
                                             Row(
                                               children: [
-                                                Text('@${friend.username}', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey)),
+                                                Flexible(
+                                                  child: Text(
+                                                    '@${friend.username}',
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                                                  ),
+                                                ),
                                                 if (hasPending) ...[
                                                   const SizedBox(width: 6),
                                                   Container(

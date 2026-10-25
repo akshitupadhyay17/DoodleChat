@@ -71,13 +71,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(selectedEmoji, style: const TextStyle(fontSize: 24)),
                   const SizedBox(width: 8),
-                  Text(
-                    'New Doodle Group',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                  Flexible(
+                    child: Text(
+                      'New Doodle Group',
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
+                      ),
                     ),
                   ),
                 ],
@@ -271,87 +274,91 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   // Sleek Top App Bar (Instagram/Snapchat style)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppTheme.electricPink, AppTheme.cyberViolet],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.electricPink.withOpacity(0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(Icons.gesture_rounded, color: Colors.white, size: 20),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'doodle',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.7,
-                                color: isDark ? Colors.white : const Color(0xFF0E1017),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Action Buttons: Find/Add Friends & Camera
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: _showAddFriendDialog,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
-                                  color: isDark ? AppTheme.darkCard : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
+                                  gradient: const LinearGradient(
+                                    colors: [AppTheme.electricPink, AppTheme.cyberViolet],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
+                                  borderRadius: BorderRadius.circular(10),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                                      color: AppTheme.electricPink.withOpacity(0.3),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.person_add_rounded,
-                                      size: 16,
-                                      color: AppTheme.electricPink,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Add Friends',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark ? Colors.white : const Color(0xFF0E1017),
-                                      ),
-                                    ),
-                                  ],
+                                child: const Icon(Icons.gesture_rounded, color: Colors.white, size: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  'doodle',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.6,
+                                    color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Action Buttons: Find/Add Friends
+                        GestureDetector(
+                          onTap: _showAddFriendDialog,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppTheme.darkCard : Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.person_add_rounded,
+                                  size: 15,
+                                  color: AppTheme.electricPink,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Add Friends',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -815,18 +822,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.electricPink.withOpacity(0.14),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '@${user.username}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.electricPink,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.electricPink.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '@${user.username}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.electricPink,
+                          ),
                         ),
                       ),
                     ),
@@ -1220,43 +1231,50 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(
-                  contact.name,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF0E1017),
-                  ),
-                ),
-                if (contact.streakCount > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.sunsetOrange.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(8),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      contact.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('🔥', style: TextStyle(fontSize: 11)),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${contact.streakCount}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.sunsetOrange,
+                  ),
+                  if (contact.streakCount > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.sunsetOrange.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🔥', style: TextStyle(fontSize: 11)),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${contact.streakCount}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.sunsetOrange,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               contact.lastActive,
               style: GoogleFonts.plusJakartaSans(
@@ -1281,12 +1299,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(statusIcon, size: 13, color: statusTextColor),
                   const SizedBox(width: 4),
-                  Text(
-                    statusLabel,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: statusTextColor,
+                  Flexible(
+                    child: Text(
+                      statusLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: statusTextColor,
+                      ),
                     ),
                   ),
                 ],
