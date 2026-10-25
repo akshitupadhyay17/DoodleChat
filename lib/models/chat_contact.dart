@@ -38,6 +38,8 @@ class ChatContact {
   final ValueNotifier<bool> peerDrawing = ValueNotifier<bool>(false);
   final ValueNotifier<double> peerEraseProgress = ValueNotifier<double>(0);
 
+  DateTime? lastInteractionTimestamp;
+
   ChatContact({
     required this.id,
     required this.name,
@@ -53,6 +55,7 @@ class ChatContact {
     this.pendingDoodle,
     this.activeStory,
     this.storyTimestamp,
+    this.lastInteractionTimestamp,
     this.chatTheme = 'Default',
     this.streakCount = 1,
     this.isDemo = false,
@@ -71,6 +74,8 @@ class ChatContact {
         'theme': chatTheme,
         'friendship': friendshipStatus.name,
         'streak': streakCount,
+        if (lastInteractionTimestamp != null)
+          'lastInteraction': lastInteractionTimestamp!.toIso8601String(),
       };
 
   factory ChatContact.fromJson(Map<String, dynamic> j) => ChatContact(
@@ -87,6 +92,9 @@ class ChatContact {
           orElse: () => FriendshipStatus.accepted,
         ),
         streakCount: (j['streak'] as num?)?.toInt() ?? 1,
+        lastInteractionTimestamp: j['lastInteraction'] != null
+            ? DateTime.tryParse(j['lastInteraction'] as String)
+            : null,
         isOnline: false,
         lastActive: 'Saved',
       );

@@ -925,6 +925,16 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((c) => c.friendshipStatus != FriendshipStatus.requestReceived)
         .toList();
 
+    // Sort with latest interacted contact at the top
+    displayList.sort((a, b) {
+      final timeA = a.lastInteractionTimestamp;
+      final timeB = b.lastInteractionTimestamp;
+      if (timeA == null && timeB == null) return 0;
+      if (timeA == null) return 1;
+      if (timeB == null) return -1;
+      return timeB.compareTo(timeA);
+    });
+
     if (displayList.isEmpty) {
       return Center(
         child: Padding(

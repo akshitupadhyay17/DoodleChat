@@ -88,9 +88,7 @@ class _DoodleChatAppState extends State<DoodleChatApp> with WidgetsBindingObserv
   void _onEvent(ChatEvent e) {
     switch (e.type) {
       case ChatEventType.incomingDoodle:
-        if (e.contact != null && _chatService.activeChat != e.contact!.username) {
-          _toast('🎨 New doodle from @${e.contact!.username}', color: const Color(0xFFE5A800));
-        }
+        // Notification removed per user request: latest interacted contact is placed at the top of the chat list
         break;
       case ChatEventType.doodleErased:
         if (e.contact != null && _chatService.activeChat != e.contact!.username) {

@@ -173,16 +173,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       _service.sendDoodle(target.id, data);
       HapticFeedback.heavyImpact();
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Reply sent to ${target.name}! 🎨🚀',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: const Color(0xFF00B894),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
       return;
     }
 
@@ -1157,25 +1147,18 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   Navigator.pop(ctx); // Close recipients sheet
                                   Navigator.pop(context); // Close DoodleUp back to home
 
-                                  final message = StringBuffer();
-                                  if (sentCount > 0 && postToDoodleUp) {
-                                    message.write('Sent to $sentCount contact${sentCount == 1 ? '' : 's'} & posted to DoodleUp! 🚀');
-                                  } else if (postToDoodleUp) {
-                                    message.write('Posted to DoodleUp! 🚀');
-                                  } else {
-                                    message.write('Doodle sent to $sentCount contact${sentCount == 1 ? '' : 's'}! 🚀');
-                                  }
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        message.toString(),
-                                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                                  if (postToDoodleUp && sentCount == 0) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Posted to DoodleUp! 🚀',
+                                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                                        ),
+                                        backgroundColor: const Color(0xFF00B894),
+                                        behavior: SnackBarBehavior.floating,
                                       ),
-                                      backgroundColor: const Color(0xFF00B894),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
+                                    );
+                                  }
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFFC72C),

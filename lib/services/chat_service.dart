@@ -44,7 +44,24 @@ class ChatService extends ChangeNotifier {
   final List<Map<String, dynamic>> onlinePeers = [];
 
   /// Username of the chat screen currently open (null on Home etc.).
-  String? activeChat;
+  String? _activeChat;
+  String? get activeChat => _activeChat;
+  set activeChat(String? username) {
+    _activeChat = username;
+    if (username != null) {
+      bumpContactToTop(username);
+    }
+  }
+
+  void bumpContactToTop(String usernameOrId) {
+    final c = _find(usernameOrId);
+    if (c == null) return;
+    c.lastInteractionTimestamp = DateTime.now();
+    contacts.remove(c);
+    contacts.insert(0, c);
+    _saveContacts();
+    notifyListeners();
+  }
 
   final StreamController<ChatEvent> _events = StreamController<ChatEvent>.broadcast();
 
@@ -348,6 +365,10 @@ class ChatService extends ChangeNotifier {
           c.doodleStatus = DoodleChatStatus.idle;
           c.peerEraseProgress.value = 0;
           c.lastActive = 'Just now';
+          c.lastInteractionTimestamp = DateTime.now();
+          contacts.remove(c);
+          contacts.insert(0, c);
+          _saveContacts();
           _events.add(ChatEvent(ChatEventType.doodleErased, contact: c));
           notifyListeners();
         }
@@ -576,10 +597,12 @@ class ChatService extends ChangeNotifier {
     c.activeStory = doodle;
     c.storyTimestamp = DateTime.now();
     c.lastActive = 'Just now';
+    c.lastInteractionTimestamp = DateTime.now();
     c.peerDrawing.value = false;
     // Move the live conversation to the top.
     contacts.remove(c);
     contacts.insert(0, c);
+    _saveContacts();
     if (announce) {
       HapticFeedback.mediumImpact();
       _events.add(ChatEvent(ChatEventType.incomingDoodle, contact: c));
@@ -719,6 +742,7 @@ class ChatService extends ChangeNotifier {
     c.doodleStatus = DoodleChatStatus.sentWaitingForErase;
     c.streakCount++;
     c.lastActive = 'Just now';
+    c.lastInteractionTimestamp = DateTime.now();
     currentUser.activeStory = doodle;
     currentUser.storyTimestamp = DateTime.now();
     contacts.remove(c);
@@ -735,6 +759,10 @@ class ChatService extends ChangeNotifier {
     c.pendingDoodle = null;
     c.doodleStatus = DoodleChatStatus.idle;
     c.lastActive = 'Just now';
+    c.lastInteractionTimestamp = DateTime.now();
+    contacts.remove(c);
+    contacts.insert(0, c);
+    _saveContacts();
     if (!c.isDemo) {
       if (isConnected) {
         _send({'type': 'doodle_erased', 'to': c.username});
