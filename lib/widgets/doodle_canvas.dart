@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/doodle_stroke.dart';
 import '../services/doodle_controller.dart';
@@ -90,6 +91,142 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
                   child: const SizedBox.expand(),
                 ),
               ),
+
+              // Interactive Selection & Transformation Layer (Move anywhere, Resize, Delete)
+              AnimatedBuilder(
+                animation: c.committed,
+                builder: (context, _) {
+                  final sel = c.selection;
+                  if (sel == null) return const SizedBox.shrink();
+                  final r = sel.rect;
+                  final left = r.left * scale;
+                  final top = r.top * scale;
+                  final width = r.width * scale;
+                  final height = r.height * scale;
+
+                  return Positioned(
+                    left: left,
+                    top: top,
+                    width: width,
+                    height: height,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Move GestureDetector (dragging anywhere inside moves the element)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanUpdate: (details) {
+                              c.moveSelected(details.delta / scale);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: const Color(0xFF00E5FF), width: 2.0),
+                                borderRadius: BorderRadius.circular(12),
+                                color: const Color(0xFF00E5FF).withOpacity(0.06),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Top Floating Action Pill (Delete & Done)
+                        Positioned(
+                          top: -38,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF181822),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white24, width: 1),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => c.deleteSelected(),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFF2A6D),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.white),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => c.clearSelection(),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00E5FF),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.check_rounded, size: 13, color: Colors.black),
+                                          SizedBox(width: 2),
+                                          Text(
+                                            'Done',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Corner Scale/Resize Handle (Bottom-Right)
+                        Positioned(
+                          right: -14,
+                          bottom: -14,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanUpdate: (details) {
+                              final factor = 1.0 + (details.delta.dx + details.delta.dy) / (math.max(width, 40) * 0.85);
+                              c.scaleSelected(factor);
+                            },
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E5FF),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.35),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.open_in_full_rounded, size: 14, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -114,6 +251,9 @@ class _CommittedPainter extends CustomPainter {
 
     for (final s in c.strokes) {
       _paintStroke(canvas, s);
+    }
+    for (final sh in c.shapes) {
+      _paintStroke(canvas, sh.toStroke());
     }
     for (final t in c.texts) {
       if (t.hasBackground) {

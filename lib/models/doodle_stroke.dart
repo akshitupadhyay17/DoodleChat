@@ -264,11 +264,11 @@ TextStyle doodleTextStyle(String fontStyle, double fontSize, Color color) {
 
 class DoodleTextItem {
   final String text;
-  final Offset position;
+  Offset position;
   final Color color;
 
   /// Font size in virtual units.
-  final double fontSize;
+  double fontSize;
   final String fontStyle; // 'PatrickHand', 'Caveat', 'Gaegu', 'Outfit', 'PlusJakartaSans', 'Neon'
   final bool hasBackground; // Instagram stories text pill style!
 
@@ -392,15 +392,42 @@ List<Offset> generateShapePoints(String shape, Offset center, double radius) {
   return densify(pts, maxGap: 8.0);
 }
 
+class DoodleShapeItem {
+  final String shapeType; // 'star', 'heart', 'circle', 'rect', 'arrow', 'bubble'
+  Offset center;
+  double radius;
+  final Color color;
+  double strokeWidth;
+  final DoodleBrushType brushType;
+
+  DoodleShapeItem({
+    required this.shapeType,
+    required this.center,
+    this.radius = 160.0,
+    required this.color,
+    this.strokeWidth = 14.0,
+    this.brushType = DoodleBrushType.pen,
+  });
+
+  Rect get rect => Rect.fromCircle(center: center, radius: radius).inflate(16);
+
+  DoodleStroke toStroke() => DoodleStroke(
+        points: generateShapePoints(shapeType, center, radius),
+        color: color,
+        size: strokeWidth,
+        brushType: brushType,
+      );
+}
+
 class DoodleEmojiItem {
   final String emoji;
-  final Offset position;
+  Offset position;
 
   /// Emoji size in virtual units.
-  final double size;
+  double size;
 
   /// Optional rotation in radians for organic hand-drawn tilt.
-  final double rotation;
+  double rotation;
 
   TextPainter? _painter;
 
@@ -432,6 +459,8 @@ class DoodleEmojiItem {
     )..layout();
     return _painter = tp;
   }
+
+  void invalidate() => _painter = null;
 
   Rect get rect => Rect.fromLTWH(position.dx, position.dy, size, size).inflate(14);
 

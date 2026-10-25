@@ -172,3 +172,108 @@ class XLogoWidget extends StatelessWidget {
     );
   }
 }
+
+/// Official WhatsApp vector painter.
+class WhatsAppLogoPainter extends CustomPainter {
+  final Color color;
+  const WhatsAppLogoPainter({this.color = Colors.white});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    // Speech bubble outline path with tail at bottom-left
+    final bubble = Path();
+    final cx = w * 0.5;
+    final cy = h * 0.48;
+    final r = w * 0.40;
+
+    bubble.addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+    // Pointer tail at bottom left (~220°)
+    final tail = Path()
+      ..moveTo(w * 0.22, h * 0.72)
+      ..lineTo(w * 0.10, h * 0.88)
+      ..lineTo(w * 0.35, h * 0.82)
+      ..close();
+
+    final fullBubble = Path.combine(PathOperation.union, bubble, tail);
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.08
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+    canvas.drawPath(fullBubble, strokePaint);
+
+    // Inner telephone handset
+    final px = w * 0.5;
+    final py = h * 0.48;
+    canvas.save();
+    canvas.translate(px, py);
+    canvas.rotate(-0.15);
+    // Draw classic handset shape
+    final hand = RRect.fromRectAndRadius(
+      Rect.fromLTWH(-w * 0.16, -h * 0.20, w * 0.32, h * 0.38),
+      Radius.circular(w * 0.10),
+    );
+    // Cut out inner curve to form handset grip
+    final outerHandset = Path()..addRRect(hand);
+    final innerCutout = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(-w * 0.08, -h * 0.12, w * 0.30, h * 0.24),
+          Radius.circular(w * 0.08),
+        ),
+      );
+    final phoneShape = Path.combine(PathOperation.difference, outerHandset, innerCutout);
+    canvas.drawPath(phoneShape, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant WhatsAppLogoPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// Official WhatsApp branded logo widget with authentic green gradient.
+class WhatsAppLogoWidget extends StatelessWidget {
+  final double size;
+  const WhatsAppLogoWidget({super.key, this.size = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF29E76E), // Bright WhatsApp Green
+            Color(0xFF1DA851), // Deep WhatsApp Green
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF25D366).withOpacity(0.35),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: CustomPaint(
+          size: Size(size * 0.62, size * 0.62),
+          painter: const WhatsAppLogoPainter(color: Colors.white),
+        ),
+      ),
+    );
+  }
+}

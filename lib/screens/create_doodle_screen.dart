@@ -1019,7 +1019,15 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Stickers & Emojis', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                    Text(
+                      'Stickers & Emojis',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF14141E),
+                      ),
+                    ),
                     IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
@@ -1084,7 +1092,11 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Canva Shapes',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF14141E),
+                          ),
                         ),
                       ],
                     ),
@@ -1094,7 +1106,10 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Tap any shape to stamp onto your canvas in active brush style',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF9EA3B5) : const Color(0xFF6B7280),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -1124,7 +1139,11 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           const SizedBox(height: 4),
                           Text(
                             s['name']!,
-                            style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
+                            ),
                           ),
                         ],
                       ),
@@ -1185,7 +1204,11 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             const SizedBox(width: 8),
                             Text(
                               'Canva Text Studio',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : const Color(0xFF14141E),
+                              ),
                             ),
                           ],
                         ),
@@ -1219,16 +1242,25 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Input TextField
+                    // Input TextField with high contrast dark mode text & hint
                     TextField(
                       controller: textCtrl,
                       autofocus: true,
                       onChanged: (val) => setDlgState(() {}),
+                      style: GoogleFonts.plusJakartaSans(
+                        color: isDark ? Colors.white : const Color(0xFF14141E),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      cursorColor: AppTheme.electricPink,
                       decoration: InputDecoration(
                         hintText: 'Type your message...',
-                        hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey),
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          color: isDark ? const Color(0xFF9094A6) : const Color(0xFF8A90A6),
+                          fontSize: 15,
+                        ),
                         filled: true,
-                        fillColor: isDark ? const Color(0xFF282834) : const Color(0xFFF3F4F6),
+                        fillColor: isDark ? const Color(0xFF22222E) : const Color(0xFFF3F4F6),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -1265,7 +1297,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                     // Font Switcher Chips
                     Text(
                       'FONTS',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? const Color(0xFFB0B5C6) : const Color(0xFF6B7280),
+                        letterSpacing: 1.1,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     SizedBox(
@@ -1302,7 +1339,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                     // Color Picker Row for Text
                     Text(
                       'COLOR',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? const Color(0xFFB0B5C6) : const Color(0xFF6B7280),
+                        letterSpacing: 1.1,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     SizedBox(

@@ -2,7 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/doodle_stroke.dart';
 
-/// Renders emojis as vibrant hand-drawn cartoon doodles and comic-style stickers.
+/// Renders emojis as vibrant hand-drawn cartoon doodles directly on the canvas,
+/// completely background-less (transparent, with no white badge or backing).
 class CartoonEmojiRenderer {
   CartoonEmojiRenderer._();
 
@@ -23,6 +24,9 @@ class CartoonEmojiRenderer {
       case '🌟':
       case '✨':
       case '😂':
+      case '🤣':
+      case '😆':
+      case '😹':
       case '👑':
       case '🎉':
       case '💯':
@@ -35,7 +39,7 @@ class CartoonEmojiRenderer {
     }
   }
 
-  /// Paints the emoji on the canvas with cartoon styling.
+  /// Paints the emoji on the canvas with cartoon styling (background-less).
   static void paint(Canvas canvas, DoodleEmojiItem item, {Color? brushColor}) {
     canvas.save();
 
@@ -58,16 +62,16 @@ class CartoonEmojiRenderer {
     if (isCustom) {
       _paintCustomCartoonVector(canvas, norm, rect, s);
     } else {
-      _paintUniversalComicSticker(canvas, item, rect, s);
+      _paintUniversalComicEmoji(canvas, item, rect, s);
     }
 
     canvas.restore();
   }
 
-  // ──────────────────────── Custom Vector Cartoons ────────────────────────
+  // ──────────────────────── Custom Vector Cartoons (No White Backing) ────────────────────────
 
   static void _paintCustomCartoonVector(Canvas canvas, String emoji, Rect r, double size) {
-    final strokeW = (size * 0.055).clamp(2.5, 6.5);
+    final strokeW = (size * 0.055).clamp(2.5, 6.0);
     final inkPaint = Paint()
       ..color = const Color(0xFF16161E)
       ..style = PaintingStyle.stroke
@@ -77,11 +81,11 @@ class CartoonEmojiRenderer {
       ..isAntiAlias = true;
 
     final shadowPaint = Paint()
-      ..color = const Color(0x770E0E14)
+      ..color = const Color(0x33000000)
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    final shadowOffset = Offset(size * 0.05, size * 0.06);
+    final shadowOffset = Offset(size * 0.04, size * 0.05);
 
     switch (emoji) {
       case '⚡':
@@ -102,6 +106,9 @@ class CartoonEmojiRenderer {
         _paintCartoonSparkles(canvas, r, size, inkPaint, shadowPaint, shadowOffset);
         break;
       case '😂':
+      case '🤣':
+      case '😆':
+      case '😹':
         _paintCartoonLaugh(canvas, r, size, inkPaint, shadowPaint, shadowOffset);
         break;
       case '👑':
@@ -127,7 +134,7 @@ class CartoonEmojiRenderer {
     }
   }
 
-  // 1. ⚡ Cartoon Lightning Bolt
+  // 1. ⚡ Cartoon Lightning Bolt (Pure transparent background)
   static void _paintLightningBolt(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     Offset p(double x, double y) => Offset(r.left + x * s, r.top + y * s);
 
@@ -140,23 +147,16 @@ class CartoonEmojiRenderer {
       ..lineTo(p(0.52, 0.44).dx, p(0.52, 0.44).dy)
       ..close();
 
-    // 1. White die-cut sticker backing
-    final whiteBacking = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.16
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    // Soft drop shadow
     canvas.drawPath(path.shift(shOff), shadow);
-    canvas.drawPath(path, whiteBacking);
 
-    // 2. Bright yellow fill
+    // Bright electric yellow fill
     final yellowFill = Paint()
       ..color = const Color(0xFFFFD600)
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, yellowFill);
 
-    // 3. Specular shine streak
+    // Specular shine streak
     final shinePath = Path()
       ..moveTo(p(0.52, 0.15).dx, p(0.52, 0.15).dy)
       ..lineTo(p(0.28, 0.48).dx, p(0.28, 0.48).dy);
@@ -167,14 +167,14 @@ class CartoonEmojiRenderer {
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(shinePath, shinePaint);
 
-    // 4. Comic ink outline
+    // Bold comic ink outline
     canvas.drawPath(path, ink);
 
-    // 5. Sketched comic action sparks around it
+    // Sketched comic action sparks around it
     _drawSparkLines(canvas, [p(0.12, 0.38), p(0.88, 0.35), p(0.85, 0.65)], s * 0.12, ink);
   }
 
-  // 2. 💖 Cute Cartoon Heart
+  // 2. 💖 Cute Cartoon Heart (No white backing)
   static void _paintCartoonHeart(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     final path = Path();
     final top = r.top + s * 0.15;
@@ -188,29 +188,17 @@ class CartoonEmojiRenderer {
     path.cubicTo(right, top, right, bottom - s * 0.35, midX, bottom);
     path.close();
 
-    // Shadow & White die-cut outline
+    // Soft drop shadow
     canvas.drawPath(path.shift(shOff), shadow);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.14
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
     // Luscious candy hot pink fill
     canvas.drawPath(path, Paint()..color = const Color(0xFFFF2A6D));
 
     // Specular highlight crescent
-    final hlPath = Path();
-    hlPath.addOval(Rect.fromLTWH(r.left + s * 0.20, r.top + s * 0.25, s * 0.20, s * 0.32));
     canvas.save();
     canvas.clipPath(path);
-    canvas.rotate(-0.3);
     canvas.drawOval(
-      Rect.fromLTWH(r.left + s * 0.05, r.top + s * 0.32, s * 0.14, s * 0.26),
+      Rect.fromLTWH(r.left + s * 0.18, r.top + s * 0.22, s * 0.18, s * 0.32),
       Paint()..color = Colors.white.withOpacity(0.65),
     );
     canvas.restore();
@@ -222,11 +210,10 @@ class CartoonEmojiRenderer {
     _drawDoodleSparkle(canvas, Offset(r.left + s * 0.82, r.top + s * 0.18), s * 0.12, ink);
   }
 
-  // 3. 🔥 Cartoon Flame
+  // 3. 🔥 Cartoon Flame (No white backing)
   static void _paintCartoonFlame(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     Offset p(double x, double y) => Offset(r.left + x * s, r.top + y * s);
 
-    // Outer flame path
     final outer = Path()
       ..moveTo(p(0.50, 0.92).dx, p(0.50, 0.92).dy)
       ..cubicTo(p(0.15, 0.88).dx, p(0.15, 0.88).dy, p(0.12, 0.55).dx, p(0.12, 0.55).dy, p(0.35, 0.35).dx, p(0.35, 0.35).dy)
@@ -237,24 +224,14 @@ class CartoonEmojiRenderer {
       ..cubicTo(p(0.80, 0.92).dx, p(0.80, 0.92).dy, p(0.55, 0.92).dx, p(0.55, 0.92).dy, p(0.50, 0.92).dx, p(0.50, 0.92).dy)
       ..close();
 
-    // Inner yellow core flame
     final inner = Path()
       ..moveTo(p(0.50, 0.86).dx, p(0.50, 0.86).dy)
       ..cubicTo(p(0.32, 0.84).dx, p(0.32, 0.84).dy, p(0.32, 0.62).dx, p(0.32, 0.62).dy, p(0.50, 0.40).dx, p(0.50, 0.40).dy)
       ..cubicTo(p(0.68, 0.62).dx, p(0.68, 0.62).dy, p(0.68, 0.84).dx, p(0.68, 0.84).dy, p(0.50, 0.86).dx, p(0.50, 0.86).dy)
       ..close();
 
-    // Shadow & die-cut white outline
+    // Soft drop shadow
     canvas.drawPath(outer.shift(shOff), shadow);
-    canvas.drawPath(
-      outer,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.14
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
     // Outer flame fill (vivid red-orange)
     canvas.drawPath(outer, Paint()..color = const Color(0xFFFF4800));
@@ -269,7 +246,7 @@ class CartoonEmojiRenderer {
     canvas.drawCircle(p(0.48, 0.02), s * 0.035, ink);
   }
 
-  // 4. ⭐ Cartoon Star with smiling doodle face
+  // 4. ⭐ Cartoon Star with smiling doodle face (No white backing)
   static void _paintCartoonStar(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     final cx = r.left + s * 0.5;
     final cy = r.top + s * 0.52;
@@ -290,17 +267,8 @@ class CartoonEmojiRenderer {
     }
     path.close();
 
-    // Shadow & white die-cut backing
+    // Soft drop shadow
     canvas.drawPath(path.shift(shOff), shadow);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.14
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
     // Golden yellow fill
     canvas.drawPath(path, Paint()..color = const Color(0xFFFFC700));
@@ -317,7 +285,7 @@ class CartoonEmojiRenderer {
     canvas.drawCircle(Offset(cx - s * 0.12, cy - s * 0.035), s * 0.015, Paint()..color = Colors.white);
     canvas.drawCircle(Offset(cx + s * 0.10, cy - s * 0.035), s * 0.015, Paint()..color = Colors.white);
 
-    // Open happy cartoon smile
+    // Happy open cartoon smile
     final mouthPath = Path()
       ..arcTo(
         Rect.fromCircle(center: Offset(cx, cy + s * 0.02), radius: s * 0.08),
@@ -340,7 +308,7 @@ class CartoonEmojiRenderer {
     canvas.drawCircle(Offset(cx + s * 0.18, cy + s * 0.05), s * 0.04, blushPaint);
   }
 
-  // 5. ✨ Cartoon Sparkle Diamonds
+  // 5. ✨ Cartoon Sparkle Diamonds (No white backing)
   static void _paintCartoonSparkles(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     void drawDiamond(Offset center, double radius, Color color) {
       final p = Path();
@@ -352,15 +320,6 @@ class CartoonEmojiRenderer {
       p.close();
 
       canvas.drawPath(p.shift(shOff), shadow);
-      canvas.drawPath(
-        p,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = s * 0.08
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      );
       canvas.drawPath(p, Paint()..color = color);
       canvas.drawPath(p, ink);
     }
@@ -374,32 +333,24 @@ class CartoonEmojiRenderer {
     canvas.drawCircle(Offset(r.left + s * 0.76, r.top + s * 0.78), s * 0.05, ink);
   }
 
-  // 6. 😂 Cartoon Laughing Face
+  // 6. 😂 / 🤣 Custom Cartoon Laughing Emoji Face (No white background)
   static void _paintCartoonLaugh(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     final cx = r.left + s * 0.5;
     final cy = r.top + s * 0.5;
     final radius = s * 0.42;
 
-    // Shadow & die-cut white backing
+    // Soft drop shadow
     canvas.drawCircle(Offset(cx + shOff.dx, cy + shOff.dy), radius, shadow);
-    canvas.drawCircle(
-      Offset(cx, cy),
-      radius,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.12,
-    );
 
-    // Yellow head fill
+    // Vibrant round yellow head fill
     canvas.drawCircle(Offset(cx, cy), radius, Paint()..color = const Color(0xFFFFD200));
     canvas.drawCircle(Offset(cx, cy), radius, ink);
 
-    // Laughing closed arc eyes (^ ^)
+    // Arched laughing closed squint eyes (^ ^)
     final eyePaint = Paint()
       ..color = const Color(0xFF14141E)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.05
+      ..strokeWidth = s * 0.055
       ..strokeCap = StrokeCap.round;
 
     final leftEye = Path()
@@ -419,30 +370,50 @@ class CartoonEmojiRenderer {
     canvas.drawPath(leftEye, eyePaint);
     canvas.drawPath(rightEye, eyePaint);
 
+    // Eyebrows raised in laughing joy
+    final browPaint = Paint()
+      ..color = const Color(0xFF14141E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.04
+      ..strokeCap = StrokeCap.round;
+    final leftBrow = Path()
+      ..moveTo(cx - s * 0.24, cy - s * 0.16)
+      ..quadraticBezierTo(cx - s * 0.16, cy - s * 0.22, cx - s * 0.08, cy - s * 0.18);
+    final rightBrow = Path()
+      ..moveTo(cx + s * 0.08, cy - s * 0.18)
+      ..quadraticBezierTo(cx + s * 0.16, cy - s * 0.22, cx + s * 0.24, cy - s * 0.16);
+    canvas.drawPath(leftBrow, browPaint);
+    canvas.drawPath(rightBrow, browPaint);
+
     // Big laughing open mouth
     final mouth = Path()
-      ..moveTo(cx - s * 0.22, cy + s * 0.06)
+      ..moveTo(cx - s * 0.24, cy + s * 0.06)
       ..arcTo(
-        Rect.fromCircle(center: Offset(cx, cy + s * 0.06), radius: s * 0.22),
-        0.1,
-        math.pi - 0.2,
+        Rect.fromCircle(center: Offset(cx, cy + s * 0.06), radius: s * 0.24),
+        0.05,
+        math.pi - 0.1,
         false,
       )
       ..close();
-    canvas.drawPath(mouth, Paint()..color = const Color(0xFF7A1C1C));
-    // Pink tongue inside
+    canvas.drawPath(mouth, Paint()..color = const Color(0xFF6B1212));
+
+    // Pink tongue and upper teeth inside mouth
     canvas.save();
     canvas.clipPath(mouth);
-    canvas.drawCircle(Offset(cx, cy + s * 0.22), s * 0.13, Paint()..color = const Color(0xFFFF5252));
+    // Upper teeth strip
+    canvas.drawRect(Rect.fromLTWH(cx - s * 0.20, cy + s * 0.06, s * 0.40, s * 0.06), Paint()..color = Colors.white);
+    // Cute pink tongue
+    canvas.drawCircle(Offset(cx, cy + s * 0.24), s * 0.13, Paint()..color = const Color(0xFFFF5252));
     canvas.restore();
+
     canvas.drawPath(mouth, ink);
 
-    // Blue tears splashing sideways!
+    // Blue comic tears splashing sideways!
     void drawTear(Offset pos, double angle) {
       final tPath = Path();
-      tPath.moveTo(pos.dx, pos.dy - s * 0.08);
-      tPath.quadraticBezierTo(pos.dx - s * 0.06, pos.dy, pos.dx, pos.dy + s * 0.06);
-      tPath.quadraticBezierTo(pos.dx + s * 0.06, pos.dy, pos.dx, pos.dy - s * 0.08);
+      tPath.moveTo(pos.dx, pos.dy - s * 0.09);
+      tPath.quadraticBezierTo(pos.dx - s * 0.07, pos.dy, pos.dx, pos.dy + s * 0.07);
+      tPath.quadraticBezierTo(pos.dx + s * 0.07, pos.dy, pos.dx, pos.dy - s * 0.09);
       tPath.close();
 
       canvas.save();
@@ -451,6 +422,8 @@ class CartoonEmojiRenderer {
       canvas.translate(-pos.dx, -pos.dy);
       canvas.drawPath(tPath, Paint()..color = const Color(0xFF00B0FF));
       canvas.drawPath(tPath, ink);
+      // Tear reflection
+      canvas.drawCircle(Offset(pos.dx - s * 0.02, pos.dy), s * 0.015, Paint()..color = Colors.white);
       canvas.restore();
     }
 
@@ -458,7 +431,7 @@ class CartoonEmojiRenderer {
     drawTear(Offset(cx + s * 0.38, cy + s * 0.02), 0.7);
   }
 
-  // 7. 👑 Cartoon Gold Crown
+  // 7. 👑 Cartoon Gold Crown (No white backing)
   static void _paintCartoonCrown(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     Offset p(double x, double y) => Offset(r.left + x * s, r.top + y * s);
 
@@ -472,17 +445,8 @@ class CartoonEmojiRenderer {
       ..lineTo(p(0.88, 0.78).dx, p(0.88, 0.78).dy)
       ..close();
 
-    // Shadow & white die-cut backing
+    // Soft drop shadow
     canvas.drawPath(path.shift(shOff), shadow);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.12
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
     // Gold fill
     canvas.drawPath(path, Paint()..color = const Color(0xFFFFB300));
@@ -510,7 +474,7 @@ class CartoonEmojiRenderer {
     canvas.drawCircle(p(0.68, 0.70), s * 0.04, ink);
   }
 
-  // 8. 🎉 Cartoon Party Popper
+  // 8. 🎉 Cartoon Party Popper (No white backing)
   static void _paintCartoonPopper(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     Offset p(double x, double y) => Offset(r.left + x * s, r.top + y * s);
 
@@ -523,15 +487,6 @@ class CartoonEmojiRenderer {
       ..close();
 
     canvas.drawPath(cone.shift(shOff), shadow);
-    canvas.drawPath(
-      cone,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.12
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
     // Cone stripes fill
     canvas.drawPath(cone, Paint()..color = const Color(0xFF7C4DFF));
@@ -566,13 +521,13 @@ class CartoonEmojiRenderer {
     _drawDoodleSparkle(canvas, p(0.82, 0.52), s * 0.08, ink);
   }
 
-  // 9. 💯 Cartoon 100 with double comic underline
+  // 9. 💯 Cartoon 100 with double comic underline (Transparent background)
   static void _paintCartoonHundred(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     final tp = TextPainter(
       text: TextSpan(
         text: '100',
         style: TextStyle(
-          fontSize: s * 0.58,
+          fontSize: s * 0.62,
           fontWeight: FontWeight.w900,
           color: const Color(0xFFE50914),
           fontStyle: FontStyle.italic,
@@ -582,36 +537,28 @@ class CartoonEmojiRenderer {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    final textPos = Offset(r.left + (s - tp.width) / 2, r.top + s * 0.12);
-
-    // Die cut white sticker box
-    final badgeRect = Rect.fromLTWH(r.left + s * 0.05, r.top + s * 0.10, s * 0.90, s * 0.80);
-    final badgeRRect = RRect.fromRectAndRadius(badgeRect, Radius.circular(s * 0.18));
-
-    canvas.drawRRect(badgeRRect.shift(shOff), shadow);
-    canvas.drawRRect(badgeRRect, Paint()..color = Colors.white);
-    canvas.drawRRect(badgeRRect, ink);
+    final textPos = Offset(r.left + (s - tp.width) / 2, r.top + s * 0.08);
 
     tp.paint(canvas, textPos);
 
     // Double comic red underline
     final under1 = Path()
-      ..moveTo(r.left + s * 0.14, r.top + s * 0.70)
-      ..lineTo(r.left + s * 0.86, r.top + s * 0.70);
+      ..moveTo(r.left + s * 0.08, r.top + s * 0.72)
+      ..lineTo(r.left + s * 0.92, r.top + s * 0.72);
     final under2 = Path()
-      ..moveTo(r.left + s * 0.18, r.top + s * 0.78)
-      ..lineTo(r.left + s * 0.82, r.top + s * 0.78);
+      ..moveTo(r.left + s * 0.14, r.top + s * 0.82)
+      ..lineTo(r.left + s * 0.86, r.top + s * 0.82);
 
     final linePaint = Paint()
       ..color = const Color(0xFFE50914)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.045
+      ..strokeWidth = s * 0.05
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(under1, linePaint);
     canvas.drawPath(under2, linePaint);
   }
 
-  // 10. 🌸 Cartoon Blossom Flower
+  // 10. 🌸 Cartoon Blossom Flower (No white backing)
   static void _paintCartoonFlower(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     final cx = r.left + s * 0.5;
     final cy = r.top + s * 0.5;
@@ -626,17 +573,8 @@ class CartoonEmojiRenderer {
     }
     flowerPath.addOval(Rect.fromCircle(center: Offset(cx, cy), radius: s * 0.18));
 
-    // Shadow & die-cut white backing
+    // Soft drop shadow
     canvas.drawPath(flowerPath.shift(shOff), shadow);
-    canvas.drawPath(
-      flowerPath,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.12
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
     // Pink petals
     for (int i = 0; i < petals; i++) {
@@ -651,7 +589,7 @@ class CartoonEmojiRenderer {
     canvas.drawCircle(Offset(cx, cy), s * 0.15, ink);
   }
 
-  // 11. 🖤 Cartoon Black Heart
+  // 11. 🖤 Cartoon Black Heart (No white backing)
   static void _paintCartoonBlackHeart(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     final path = Path();
     final top = r.top + s * 0.15;
@@ -665,19 +603,10 @@ class CartoonEmojiRenderer {
     path.cubicTo(right, top, right, bottom - s * 0.35, midX, bottom);
     path.close();
 
-    // Shadow & white die-cut backing
+    // Soft drop shadow
     canvas.drawPath(path.shift(shOff), shadow);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.14
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
-    // Sleek charcoal black fill
+    // Charcoal black fill
     canvas.drawPath(path, Paint()..color = const Color(0xFF1E1E24));
     canvas.drawPath(path, ink);
 
@@ -695,7 +624,7 @@ class CartoonEmojiRenderer {
     );
   }
 
-  // 12. 🚀 Cartoon Retro Rocket
+  // 12. 🚀 Cartoon Retro Rocket (No white backing)
   static void _paintCartoonRocket(Canvas canvas, Rect r, double s, Paint ink, Paint shadow, Offset shOff) {
     Offset p(double x, double y) => Offset(r.left + x * s, r.top + y * s);
 
@@ -718,18 +647,7 @@ class CartoonEmojiRenderer {
       ..quadraticBezierTo(p(0.50, 0.30).dx, p(0.50, 0.30).dy, p(0.85, 0.15).dx, p(0.85, 0.15).dy)
       ..close();
 
-    // White die cut & shadow
     canvas.drawPath(body.shift(shOff), shadow);
-    canvas.drawPath(
-      body,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.12
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-
     canvas.drawPath(body, Paint()..color = const Color(0xFFF0F4F8));
     canvas.drawPath(body, ink);
 
@@ -747,10 +665,10 @@ class CartoonEmojiRenderer {
     canvas.drawPath(nose, ink);
   }
 
-  // ──────────────────────── Universal Comic Sticker Treatment ────────────────────────
+  // ──────────────────────── Universal Comic Emoji (No White Background) ────────────────────────
 
-  /// Treats any standard unicode emoji like a vibrant comic-book die-cut sticker!
-  static void _paintUniversalComicSticker(Canvas canvas, DoodleEmojiItem item, Rect r, double size) {
+  /// Renders any emoji cleanly without any white box or badge.
+  static void _paintUniversalComicEmoji(Canvas canvas, DoodleEmojiItem item, Rect r, double size) {
     final tp = item.painter;
     final w = tp.width;
     final h = tp.height;
@@ -759,54 +677,18 @@ class CartoonEmojiRenderer {
     final ex = -w / 2;
     final ey = -h / 2;
 
-    final badgePad = size * 0.14;
-    final badgeRect = Rect.fromLTWH(ex - badgePad, ey - badgePad, w + badgePad * 2, h + badgePad * 2);
-    final badgeRRect = RRect.fromRectAndRadius(badgeRect, Radius.circular(size * 0.28));
-
-    final shadowOffset = Offset(size * 0.05, size * 0.06);
-
-    // 1. Comic hard drop shadow
-    canvas.drawRRect(
-      badgeRRect.shift(shadowOffset),
-      Paint()
-        ..color = const Color(0x660E0E14)
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true,
-    );
-
-    // 2. Thick white die-cut sticker badge
-    canvas.drawRRect(
-      badgeRRect,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true,
-    );
-
-    // 3. Bold comic ink outline around sticker
-    final strokeW = (size * 0.055).clamp(2.5, 6.0);
-    canvas.drawRRect(
-      badgeRRect,
-      Paint()
-        ..color = const Color(0xFF16161E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeW
-        ..strokeJoin = StrokeJoin.round
-        ..isAntiAlias = true,
-    );
-
-    // 4. The crisp emoji painted neatly inside
+    // 1. Crisp emoji painted directly on canvas (transparent background)
     tp.paint(canvas, Offset(ex, ey));
 
-    // 5. Cute sketched action accents on corner
+    // 2. Sketched comic action accents on corner
     final ink = Paint()
       ..color = const Color(0xFF16161E)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeW * 0.7
+      ..strokeWidth = (size * 0.04).clamp(2.0, 4.5)
       ..strokeCap = StrokeCap.round;
 
-    final corner = Offset(badgeRect.right - size * 0.06, badgeRect.top - size * 0.06);
-    _drawDoodleSparkle(canvas, corner, size * 0.11, ink);
+    final corner = Offset(ex + w + size * 0.02, ey - size * 0.02);
+    _drawDoodleSparkle(canvas, corner, size * 0.10, ink);
   }
 
   // ──────────────────────── Sketched Accent Helpers ────────────────────────

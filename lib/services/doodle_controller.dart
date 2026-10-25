@@ -7,28 +7,112 @@ class RepaintTick extends ChangeNotifier {
   void bump() => notifyListeners();
 }
 
-enum _DoodleHistoryKind { stroke, text, emoji }
+enum _DoodleHistoryKind { stroke, text, emoji, shape }
 
 class _DoodleActionRecord {
   final _DoodleHistoryKind kind;
   final DoodleStroke? stroke;
   final DoodleTextItem? text;
   final DoodleEmojiItem? emoji;
+  final DoodleShapeItem? shape;
 
   _DoodleActionRecord.stroke(this.stroke)
       : kind = _DoodleHistoryKind.stroke,
         text = null,
-        emoji = null;
+        emoji = null,
+        shape = null;
 
   _DoodleActionRecord.text(this.text)
       : kind = _DoodleHistoryKind.text,
         stroke = null,
-        emoji = null;
+        emoji = null,
+        shape = null;
 
   _DoodleActionRecord.emoji(this.emoji)
       : kind = _DoodleHistoryKind.emoji,
         stroke = null,
-        text = null;
+        text = null,
+        shape = null;
+
+  _DoodleActionRecord.shape(this.shape)
+      : kind = _DoodleHistoryKind.shape,
+        stroke = null,
+        text = null,
+        emoji = null;
+}
+
+enum SelectedElementType { text, emoji, shape }
+
+class DoodleSelection {
+  final SelectedElementType type;
+  final DoodleTextItem? text;
+  final DoodleEmojiItem? emoji;
+  final DoodleShapeItem? shape;
+
+  DoodleSelection.text(this.text)
+      : type = SelectedElementType.text,
+        emoji = null,
+        shape = null;
+
+  DoodleSelection.emoji(this.emoji)
+      : type = SelectedElementType.emoji,
+        text = null,
+        shape = null;
+
+  DoodleSelection.shape(this.shape)
+      : type = SelectedElementType.shape,
+        text = null,
+        emoji = null;
+
+  Rect get rect {
+    switch (type) {
+      case SelectedElementType.text:
+        return text?.rect ?? Rect.zero;
+      case SelectedElementType.emoji:
+        return emoji?.rect ?? Rect.zero;
+      case SelectedElementType.shape:
+        return shape?.rect ?? Rect.zero;
+    }
+  }
+
+  void moveBy(Offset delta) {
+    switch (type) {
+      case SelectedElementType.text:
+        if (text != null) text!.position += delta;
+        break;
+      case SelectedElementType.emoji:
+        if (emoji != null) emoji!.position += delta;
+        break;
+      case SelectedElementType.shape:
+        if (shape != null) shape!.center += delta;
+        break;
+    }
+  }
+
+  void scaleBy(double factor) {
+    switch (type) {
+      case SelectedElementType.text:
+        if (text != null) {
+          final next = (text!.fontSize * factor).clamp(32.0, 180.0);
+          text!.fontSize = next;
+          text!.invalidate();
+        }
+        break;
+      case SelectedElementType.emoji:
+        if (emoji != null) {
+          final next = (emoji!.size * factor).clamp(40.0, 240.0);
+          emoji!.size = next;
+          emoji!.invalidate();
+        }
+        break;
+      case SelectedElementType.shape:
+        if (shape != null) {
+          final next = (shape!.radius * factor).clamp(40.0, 400.0);
+          shape!.radius = next;
+        }
+        break;
+    }
+  }
 }
 
 /// Owns the doodle being drawn / erased. The UI never `setState`s while a
@@ -44,6 +128,8 @@ class DoodleController extends ChangeNotifier {
   List<DoodleStroke> strokes = [];
   List<DoodleTextItem> texts = [];
   List<DoodleEmojiItem> emojis = [];
+  List<DoodleShapeItem> shapes = [];
+  DoodleSelection? selection;
   String? backgroundPhoto;
   final List<_DoodleActionRecord> _undoStack = [];
   final List<_DoodleActionRecord> _redoStack = [];
@@ -91,7 +177,7 @@ class DoodleController extends ChangeNotifier {
   double get activeToolPx => eraser ? eraserPx : brushPx;
 
   List<Offset> get livePoints => _live;
-  bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty && (backgroundPhoto == null || backgroundPhoto!.isEmpty);
+  bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty && shapes.isEmpty && (backgroundPhoto == null || backgroundPhoto!.isEmpty);
   bool get canUndo => _undoStack.isNotEmpty && !mustErase;
   bool get canRedo => _redoStack.isNotEmpty && !mustErase;
 
@@ -152,6 +238,8 @@ class DoodleController extends ChangeNotifier {
     strokes = [];
     texts = [];
     emojis = [];
+    shapes = [];
+    selection = null;
     backgroundPhoto = null;
     _undoStack.clear();
     _redoStack.clear();
@@ -171,8 +259,12 @@ class DoodleController extends ChangeNotifier {
   }
 
   DoodleData toData(String senderId) {
+    final allStrokes = [
+      ...strokes,
+      for (final s in shapes) s.toStroke(),
+    ];
     final c = DoodleData(
-      strokes: strokes,
+      strokes: allStrokes,
       textItems: texts,
       emojiItems: emojis,
       backgroundPhoto: backgroundPhoto,
@@ -238,7 +330,11 @@ class DoodleController extends ChangeNotifier {
       case _DoodleHistoryKind.emoji:
         if (act.emoji != null) emojis.remove(act.emoji);
         break;
+      case _DoodleHistoryKind.shape:
+        if (act.shape != null) shapes.remove(act.shape);
+        break;
     }
+    clearSelection();
     committed.bump();
     notifyListeners();
   }
@@ -257,25 +353,108 @@ class DoodleController extends ChangeNotifier {
       case _DoodleHistoryKind.emoji:
         if (act.emoji != null) emojis.add(act.emoji!);
         break;
+      case _DoodleHistoryKind.shape:
+        if (act.shape != null) shapes.add(act.shape!);
+        break;
     }
+    clearSelection();
     committed.bump();
     notifyListeners();
   }
 
   void addShape(String shapeType) {
     final center = Offset(kVirtualWidth / 2, viewHeightVirtual * 0.42);
-    final pts = generateShapePoints(shapeType, center, 160.0);
-    final s = DoodleStroke(
-      points: pts,
+    final item = DoodleShapeItem(
+      shapeType: shapeType,
+      center: center,
+      radius: 160.0,
       color: color,
-      size: (brushPx / scale).clamp(8.0, 24.0),
+      strokeWidth: (brushPx / scale).clamp(8.0, 24.0),
       brushType: brushType,
     );
-    strokes.add(s);
-    _undoStack.add(_DoodleActionRecord.stroke(s));
+    shapes.add(item);
+    _undoStack.add(_DoodleActionRecord.shape(item));
     _redoStack.clear();
+    selectShape(item);
     committed.bump();
     notifyListeners();
+  }
+
+  // ───────────────────────── direct manipulation & selection ─────────────────────────
+
+  void selectText(DoodleTextItem item) {
+    selection = DoodleSelection.text(item);
+    committed.bump();
+    notifyListeners();
+  }
+
+  void selectEmoji(DoodleEmojiItem item) {
+    selection = DoodleSelection.emoji(item);
+    committed.bump();
+    notifyListeners();
+  }
+
+  void selectShape(DoodleShapeItem item) {
+    selection = DoodleSelection.shape(item);
+    committed.bump();
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    if (selection == null) return;
+    selection = null;
+    committed.bump();
+    notifyListeners();
+  }
+
+  void moveSelected(Offset delta) {
+    if (selection == null) return;
+    selection!.moveBy(delta);
+    committed.bump();
+    notifyListeners();
+  }
+
+  void scaleSelected(double factor) {
+    if (selection == null) return;
+    selection!.scaleBy(factor);
+    committed.bump();
+    notifyListeners();
+  }
+
+  void deleteSelected() {
+    if (selection == null) return;
+    if (selection!.text != null) {
+      texts.remove(selection!.text);
+    } else if (selection!.emoji != null) {
+      emojis.remove(selection!.emoji);
+    } else if (selection!.shape != null) {
+      shapes.remove(selection!.shape);
+    }
+    selection = null;
+    committed.bump();
+    notifyListeners();
+  }
+
+  bool hitTestSelect(Offset v) {
+    for (int i = shapes.length - 1; i >= 0; i--) {
+      if (shapes[i].rect.contains(v)) {
+        selectShape(shapes[i]);
+        return true;
+      }
+    }
+    for (int i = emojis.length - 1; i >= 0; i--) {
+      if (emojis[i].rect.contains(v)) {
+        selectEmoji(emojis[i]);
+        return true;
+      }
+    }
+    for (int i = texts.length - 1; i >= 0; i--) {
+      if (texts[i].rect.contains(v)) {
+        selectText(texts[i]);
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Automatically calculates optimal font size based on text length and canvas dimensions.
@@ -354,6 +533,7 @@ class DoodleController extends ChangeNotifier {
     texts.add(item);
     _undoStack.add(_DoodleActionRecord.text(item));
     _redoStack.clear();
+    selectText(item);
     committed.bump();
     notifyListeners();
   }
@@ -378,6 +558,7 @@ class DoodleController extends ChangeNotifier {
     emojis.add(item);
     _undoStack.add(_DoodleActionRecord.emoji(item));
     _redoStack.clear();
+    selectEmoji(item);
     committed.bump();
     onStrokeStart?.call();
     notifyListeners();
@@ -389,6 +570,17 @@ class DoodleController extends ChangeNotifier {
     _ignorePointerUntilUp = false;
     if (locked) return;
     final v = screen / scale;
+
+    if (selection != null) {
+      if (selection!.rect.inflate(20).contains(v)) {
+        // Interacting with active selection overlay
+        _ignorePointerUntilUp = true;
+        return;
+      } else {
+        clearSelection();
+      }
+    }
+
     if (eraser) {
       eraserPos = v;
       _eraseAt(v);
@@ -406,10 +598,15 @@ class DoodleController extends ChangeNotifier {
       emojis.add(item);
       _undoStack.add(_DoodleActionRecord.emoji(item));
       _redoStack.clear();
+      selectEmoji(item);
       committed.bump();
       onStrokeStart?.call();
       notifyListeners();
     } else {
+      if (hitTestSelect(v)) {
+        _ignorePointerUntilUp = true;
+        return;
+      }
       _live
         ..clear()
         ..add(v);
@@ -529,7 +726,9 @@ class DoodleController extends ChangeNotifier {
     texts.removeWhere((t) => t.rect.inflate(r).contains(c));
     final eBefore = emojis.length;
     emojis.removeWhere((e) => e.rect.inflate(r).contains(c));
-    if (texts.length != tBefore || emojis.length != eBefore) modified = true;
+    final shBefore = shapes.length;
+    shapes.removeWhere((sh) => sh.rect.inflate(r).contains(c));
+    if (texts.length != tBefore || emojis.length != eBefore || shapes.length != shBefore) modified = true;
 
     if (!modified) return;
     onEraseHit?.call();
@@ -538,7 +737,7 @@ class DoodleController extends ChangeNotifier {
   }
 
   double _remainingUnits() {
-    double total = (texts.length + emojis.length) * _itemUnits;
+    double total = (texts.length + emojis.length + shapes.length) * _itemUnits;
     for (final s in strokes) {
       total += s.length;
     }
@@ -556,6 +755,7 @@ class DoodleController extends ChangeNotifier {
         strokes = [];
         texts = [];
         emojis = [];
+        shapes = [];
         committed.bump();
       }
     }

@@ -144,20 +144,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 Row(
                   children: [
-                    // WhatsApp
+                    // WhatsApp (Official Logo)
                     Expanded(
                       child: _buildShareTile(
-                        iconWidget: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF25D366),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 16),
-                          ),
-                        ),
+                        iconWidget: const WhatsAppLogoWidget(size: 28),
                         label: 'WhatsApp',
                         color: const Color(0xFF25D366),
                         onTap: () {
@@ -169,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(width: 8),
 
-                    // Instagram (Actual Logo)
+                    // Instagram (Official Logo)
                     Expanded(
                       child: _buildShareTile(
                         iconWidget: const InstagramLogoWidget(size: 28),
@@ -182,25 +172,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             'instagram://app',
                             fallbackCopyText: shareMsg,
                             feedbackMessage: 'Profile link copied! Share to Instagram Stories or DM 📸',
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // X / Twitter (Actual Logo)
-                    Expanded(
-                      child: _buildShareTile(
-                        iconWidget: XLogoWidget(size: 28, isDark: isDark),
-                        label: 'X',
-                        color: isDark ? Colors.white : const Color(0xFF0F1419),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          final xUrl = 'https://x.com/intent/tweet?text=${Uri.encodeComponent(shareMsg)}';
-                          _launchSocial(
-                            xUrl,
-                            fallbackCopyText: shareMsg,
-                            feedbackMessage: 'X tweet composer opened! 𝕏',
                           );
                         },
                       ),
