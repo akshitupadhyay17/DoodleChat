@@ -370,31 +370,31 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildToolAction(
-                    icon: Icons.rotate_right_rounded,
+                    type: 'rotate',
                     label: 'Rotate',
                     isDark: isDark,
                     onTap: _rotate90,
                   ),
                   _buildToolAction(
-                    icon: Icons.aspect_ratio_rounded,
+                    type: 'fit',
                     label: 'Fit Whole',
                     isDark: isDark,
                     onTap: () => _resetFit(fill: false),
                   ),
                   _buildToolAction(
-                    icon: Icons.crop_square_rounded,
+                    type: 'fill',
                     label: 'Fill Square',
                     isDark: isDark,
                     onTap: () => _resetFit(fill: true),
                   ),
                   _buildToolAction(
-                    icon: Icons.zoom_out_rounded,
+                    type: 'zoom_out',
                     label: 'Zoom -',
                     isDark: isDark,
                     onTap: () => _zoom(0.85),
                   ),
                   _buildToolAction(
-                    icon: Icons.zoom_in_rounded,
+                    type: 'zoom_in',
                     label: 'Zoom +',
                     isDark: isDark,
                     onTap: () => _zoom(1.15),
@@ -468,27 +468,47 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
   }
 
   Widget _buildToolAction({
-    required IconData icon,
+    required String type,
     required String label,
     required bool isDark,
     required VoidCallback onTap,
   }) {
+    final activeColor = isDark ? Colors.white : const Color(0xFF14141E);
+    final labelColor = isDark ? const Color(0xFFA5ABC0) : const Color(0xFF5D6275);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: isDark ? Colors.white70 : const Color(0xFF333344)),
-            const SizedBox(height: 3),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: CustomPaint(
+                  size: const Size(20, 20),
+                  painter: _CropperToolIconPainter(type: type, color: activeColor),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: isDark ? const Color(0xFF9094A6) : const Color(0xFF5D6275),
+                fontWeight: FontWeight.w700,
+                color: labelColor,
               ),
             ),
           ],
@@ -496,4 +516,108 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
       ),
     );
   }
+}
+
+/// 100% mathematical vector painters for all cropper tools.
+/// Eliminates dependency on font icons and guarantees crisp rendering on Flutter Web.
+class _CropperToolIconPainter extends CustomPainter {
+  final String type;
+  final Color color;
+
+  const _CropperToolIconPainter({required this.type, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+    final cy = h / 2;
+
+    switch (type) {
+      case 'rotate':
+        // Circular arc with clockwise arrow head
+        final rect = Rect.fromCircle(center: Offset(cx, cy), radius: w * 0.38);
+        canvas.drawArc(rect, -math.pi * 0.8, math.pi * 1.5, false, strokePaint);
+        // Arrow head at top right
+        final arrowPath = Path();
+        arrowPath.moveTo(cx + w * 0.12, cy - w * 0.52);
+        arrowPath.lineTo(cx + w * 0.40, cy - w * 0.38);
+        arrowPath.lineTo(cx + w * 0.20, cy - w * 0.16);
+        canvas.drawPath(arrowPath, strokePaint);
+        break;
+
+      case 'fit':
+        // Aspect ratio rectangle outline + center dot
+        final rect = Rect.fromCenter(center: Offset(cx, cy), width: w * 0.85, height: h * 0.58);
+        canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(3)), strokePaint);
+        canvas.drawCircle(Offset(cx, cy), 1.8, fillPaint);
+        break;
+
+      case 'fill':
+        // 1:1 Square with diagonal expansion arrows
+        final sqRect = Rect.fromCenter(center: Offset(cx, cy), width: w * 0.76, height: h * 0.76);
+        canvas.drawRRect(RRect.fromRectAndRadius(sqRect, const Radius.circular(3)), strokePaint);
+        break;
+
+      case 'zoom_out':
+        // Magnifying glass with minus sign
+        final glassCenter = Offset(cx - 1.5, cy - 1.5);
+        final r = w * 0.30;
+        canvas.drawCircle(glassCenter, r, strokePaint);
+        // Handle
+        canvas.drawLine(
+          Offset(glassCenter.dx + r * 0.707, glassCenter.dy + r * 0.707),
+          Offset(w - 1, h - 1),
+          strokePaint..strokeWidth = 2.5,
+        );
+        // Minus line
+        canvas.drawLine(
+          Offset(glassCenter.dx - r * 0.5, glassCenter.dy),
+          Offset(glassCenter.dx + r * 0.5, glassCenter.dy),
+          strokePaint..strokeWidth = 2.0,
+        );
+        break;
+
+      case 'zoom_in':
+        // Magnifying glass with plus sign
+        final glassCenter = Offset(cx - 1.5, cy - 1.5);
+        final r = w * 0.30;
+        canvas.drawCircle(glassCenter, r, strokePaint);
+        // Handle
+        canvas.drawLine(
+          Offset(glassCenter.dx + r * 0.707, glassCenter.dy + r * 0.707),
+          Offset(w - 1, h - 1),
+          strokePaint..strokeWidth = 2.5,
+        );
+        // Plus lines
+        canvas.drawLine(
+          Offset(glassCenter.dx - r * 0.5, glassCenter.dy),
+          Offset(glassCenter.dx + r * 0.5, glassCenter.dy),
+          strokePaint..strokeWidth = 2.0,
+        );
+        canvas.drawLine(
+          Offset(glassCenter.dx, glassCenter.dy - r * 0.5),
+          Offset(glassCenter.dx, glassCenter.dy + r * 0.5),
+          strokePaint..strokeWidth = 2.0,
+        );
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CropperToolIconPainter oldDelegate) =>
+      oldDelegate.type != type || oldDelegate.color != color;
 }

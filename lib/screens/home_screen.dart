@@ -732,7 +732,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatScreen(contact: contact, replyToStory: contact.activeStory),
+                        builder: (_) => CreateDoodleScreen(
+                          replyToContact: contact,
+                          replyToStory: contact.activeStory,
+                        ),
                       ),
                     );
                   },
@@ -1227,7 +1230,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ChatScreen(contact: contact, replyToStory: contact.activeStory),
+                builder: (_) => CreateDoodleScreen(
+                  replyToContact: contact,
+                  replyToStory: contact.activeStory,
+                ),
               ),
             );
           },

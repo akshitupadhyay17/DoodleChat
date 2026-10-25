@@ -23,8 +23,15 @@ import '../widgets/find_friends_sheet.dart';
 ///  - No concept of a story: everything is DoodleUp!
 class CreateDoodleScreen extends StatefulWidget {
   final String? initialGroupId;
+  final ChatContact? replyToContact;
+  final DoodleData? replyToStory;
 
-  const CreateDoodleScreen({super.key, this.initialGroupId});
+  const CreateDoodleScreen({
+    super.key,
+    this.initialGroupId,
+    this.replyToContact,
+    this.replyToStory,
+  });
 
   @override
   State<CreateDoodleScreen> createState() => _CreateDoodleScreenState();
@@ -153,6 +160,26 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
             style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFFF4081),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Direct reply to friend's DoodleUp
+    if (widget.replyToContact != null) {
+      final target = widget.replyToContact!;
+      final data = _doodle.toData(_service.currentUser.username);
+      _service.sendDoodle(target.id, data);
+      HapticFeedback.heavyImpact();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Reply sent to ${target.name}! 🎨🚀',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: const Color(0xFF00B894),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1763,7 +1790,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          widget.initialGroupId != null ? 'Group Doodle' : 'DoodleUp',
+                          widget.replyToContact != null
+                              ? 'Reply to ${widget.replyToContact!.name.split(" ").first}'
+                              : (widget.initialGroupId != null ? 'Group Doodle' : 'DoodleUp'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
@@ -2164,7 +2193,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   const Icon(Icons.send_rounded, size: 16, color: Colors.white),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'Send',
+                                    widget.replyToContact != null ? 'Send Reply' : 'Send',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13,
