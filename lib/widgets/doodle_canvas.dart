@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/doodle_stroke.dart';
 import '../services/doodle_controller.dart';
+import 'cartoon_emoji_renderer.dart';
 
 /// High-performance doodle surface.
 ///  * Layer 1 (background): photo if user loaded one.
@@ -132,7 +133,7 @@ class _CommittedPainter extends CustomPainter {
       t.painter.paint(canvas, t.position);
     }
     for (final e in c.emojis) {
-      e.painter.paint(canvas, e.position);
+      CartoonEmojiRenderer.paint(canvas, e, brushColor: c.color);
     }
     canvas.restore();
   }

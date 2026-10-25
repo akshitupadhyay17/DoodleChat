@@ -399,12 +399,16 @@ class DoodleEmojiItem {
   /// Emoji size in virtual units.
   final double size;
 
+  /// Optional rotation in radians for organic hand-drawn tilt.
+  final double rotation;
+
   TextPainter? _painter;
 
   DoodleEmojiItem({
     required this.emoji,
     required this.position,
     this.size = 96.0,
+    this.rotation = 0.0,
   });
 
   TextPainter get painter {
@@ -429,19 +433,21 @@ class DoodleEmojiItem {
     return _painter = tp;
   }
 
-  Rect get rect => (position & painter.size).inflate(10);
+  Rect get rect => Rect.fromLTWH(position.dx, position.dy, size, size).inflate(14);
 
   Map<String, dynamic> toJson() => {
         'e': emoji,
         'x': _r(position.dx),
         'y': _r(position.dy),
         's': _r(size),
+        if (rotation != 0) 'r': _r(rotation),
       };
 
   factory DoodleEmojiItem.fromJson(Map<String, dynamic> j) => DoodleEmojiItem(
         emoji: j['e']?.toString() ?? '✨',
         position: Offset((j['x'] as num? ?? 300).toDouble(), (j['y'] as num? ?? 500).toDouble()),
         size: (j['s'] as num? ?? 96).toDouble(),
+        rotation: (j['r'] as num? ?? 0.0).toDouble(),
       );
 }
 
