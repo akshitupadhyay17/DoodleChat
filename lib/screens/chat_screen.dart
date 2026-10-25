@@ -41,6 +41,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _drawingTimer;
   bool _iAmDrawing = false;
   bool _isDraggingBrushSlider = false;
+  bool? _lastThemeDark;
 
   final List<Color> _colors = const [
     Colors.white,
@@ -78,6 +79,20 @@ class _ChatScreenState extends State<ChatScreen> {
     _eventSub = _service.events.listen(_onEvent);
     _textCtrl.addListener(() => setState(() {}));
     _syncFromService();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isDark = Theme.of(context).brightness == Brightness.dark || _service.currentUser.isDarkMode;
+    if (_lastThemeDark != isDark) {
+      _lastThemeDark = isDark;
+      if (isDark) {
+        _doodle.setBrushType(DoodleBrushType.neon);
+      } else {
+        _doodle.setBrushType(DoodleBrushType.pen);
+      }
+    }
   }
 
   @override

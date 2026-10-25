@@ -57,6 +57,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   ];
 
   bool _isDraggingBrushSlider = false;
+  bool? _lastThemeDark;
 
   @override
   void initState() {
@@ -64,6 +65,20 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
     _doodle.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isDark = Theme.of(context).brightness == Brightness.dark || _service.currentUser.isDarkMode;
+    if (_lastThemeDark != isDark) {
+      _lastThemeDark = isDark;
+      if (isDark) {
+        _doodle.setBrushType(DoodleBrushType.neon);
+      } else {
+        _doodle.setBrushType(DoodleBrushType.pen);
+      }
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/doodle_stroke.dart';
+import 'chat_service.dart';
 
 /// Tiny notifier used to repaint a single canvas layer without rebuilding widgets.
 class RepaintTick extends ChangeNotifier {
@@ -135,7 +136,19 @@ class DoodleController extends ChangeNotifier {
   final List<_DoodleActionRecord> _redoStack = [];
 
   Color color = const Color(0xFFFFC72C);
-  DoodleBrushType brushType = DoodleBrushType.pen;
+  late DoodleBrushType brushType;
+
+  DoodleController({DoodleBrushType? initialBrushType}) {
+    if (initialBrushType != null) {
+      brushType = initialBrushType;
+    } else {
+      bool isDark = false;
+      try {
+        isDark = ChatService().currentUser.isDarkMode;
+      } catch (_) {}
+      brushType = isDark ? DoodleBrushType.neon : DoodleBrushType.pen;
+    }
+  }
 
   /// Brush size in *screen* pixels (converted to virtual units on commit).
   double brushPx = 5.0;
