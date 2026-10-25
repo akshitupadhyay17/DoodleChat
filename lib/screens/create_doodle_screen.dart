@@ -11,6 +11,7 @@ import '../widgets/doodle_avatar.dart';
 import '../theme/app_theme.dart';
 import '../models/doodle_stroke.dart';
 import '../widgets/cartoon_emoji_renderer.dart';
+import '../widgets/find_friends_sheet.dart';
 
 /// Standalone doodle creator: DoodleUp!
 /// Modeled after Instagram Draw & Canva tools with full creative control:
@@ -148,7 +149,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Draw a doodle on the canvas before hitting DoodleUp! 🎨',
+            'Draw a doodle on the canvas before hitting Send! 🎨',
             style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFFF4081),
@@ -324,7 +325,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   }
 
   void _showSelectRecipientsSheet() {
-    final allFriends = _service.contacts.where((c) => c.friendshipStatus == FriendshipStatus.accepted).toList();
+    final allContacts = _service.contacts;
+    final allFriends = allContacts.where((c) => c.friendshipStatus == FriendshipStatus.accepted || c.isDemo).toList();
+    final pendingFriends = allContacts.where((c) => c.friendshipStatus != FriendshipStatus.accepted && !c.isDemo).toList();
     final allGroups = _service.groups;
 
     final selectedContactIds = <String>{};
@@ -401,19 +404,28 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(9),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFC72C).withValues(alpha: 0.2),
+                                  gradient: const LinearGradient(
+                                    colors: [AppTheme.electricPink, AppTheme.cyberViolet],
+                                  ),
                                   shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.electricPink.withValues(alpha: 0.35),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: const Text('👥', style: TextStyle(fontSize: 22)),
+                                child: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'DoodleUp Recipients',
+                                    'Select Contacts',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
@@ -421,7 +433,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Broadcast to DoodleUp or send directly to friends',
+                                    'Choose contacts to send your doodle',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 11,
                                       color: Colors.grey,
@@ -450,9 +462,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                         child: TextField(
                           controller: searchCtrl,
                           onChanged: (val) => setSheetState(() => searchQuery = val),
-                          style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                          ),
                           decoration: InputDecoration(
-                            hintText: 'Search friends or groups...',
+                            hintText: 'Search contacts or groups...',
                             hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey),
                             prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Colors.grey),
                             suffixIcon: searchQuery.isNotEmpty
@@ -471,7 +486,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       ),
                     ),
 
-                    // Quick Select Buttons
+                    // Quick Actions Row
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                       child: Row(
@@ -505,7 +520,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  allFilteredSelected ? 'Deselect All Friends' : 'Select All Friends',
+                                  allFilteredSelected ? 'Deselect All' : 'Select All Contacts',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -515,6 +530,36 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               ),
                             ),
                           const Spacer(),
+                          InkWell(
+                            onTap: () {
+                              showFindFriendsSheet(context);
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF4081).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFF4081).withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.person_add_rounded, size: 14, color: Color(0xFFFF4081)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Add Friend',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFFF4081),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           InkWell(
                             onTap: () => _showCreateGroupDialog(ctx),
                             borderRadius: BorderRadius.circular(10),
@@ -528,7 +573,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.add_rounded, size: 14, color: Color(0xFF6C5CE7)),
+                                  const Icon(Icons.group_add_rounded, size: 14, color: Color(0xFF6C5CE7)),
                                   const SizedBox(width: 4),
                                   Text(
                                     'New Group',
@@ -548,100 +593,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
 
                     const SizedBox(height: 6),
 
-                    // Scrollable List: DoodleUp Broadcast, Contacts, Groups
+                    // Scrollable List: Contacts First, then Groups, then DoodleUp Status
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         children: [
-                          // 1. DoodleUp Broadcast Card (No story!)
-                          GestureDetector(
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              setSheetState(() => postToDoodleUp = !postToDoodleUp);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 14),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: postToDoodleUp
-                                      ? [
-                                          const Color(0xFFFFC72C).withValues(alpha: 0.25),
-                                          const Color(0xFFFF4081).withValues(alpha: 0.18),
-                                        ]
-                                      : [
-                                          isDark ? const Color(0xFF282834) : const Color(0xFFF7F8FA),
-                                          isDark ? const Color(0xFF282834) : const Color(0xFFF7F8FA),
-                                        ],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.25),
-                                  width: postToDoodleUp ? 2 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: SweepGradient(
-                                        colors: [
-                                          Color(0xFFFFC72C),
-                                          Color(0xFFFF4081),
-                                          Color(0xFF6C5CE7),
-                                          Color(0xFF00CEC9),
-                                          Color(0xFFFFC72C),
-                                        ],
-                                      ),
-                                    ),
-                                    child: const Center(child: Text('🚀', style: TextStyle(fontSize: 18))),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'DoodleUp Feed',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: isDark ? Colors.white : const Color(0xFF0E1017),
-                                          ),
-                                        ),
-                                        Text(
-                                          'Broadcast to all friends on DoodleUp',
-                                          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF8A90A6)),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 160),
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.transparent,
-                                      border: Border.all(
-                                        color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.5),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: postToDoodleUp
-                                        ? const Icon(Icons.check_rounded, size: 16, color: Colors.black)
-                                        : null,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // 2. CONTACTS SECTION
+                          // 1. CONTACTS SECTION (First & Foremost)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -668,13 +625,46 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           const SizedBox(height: 6),
 
                           if (allFriends.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Center(
-                                child: Text(
-                                  'No approved friends yet. Add friends first!',
-                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
-                                ),
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF242430) : const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text('👥', style: TextStyle(fontSize: 32)),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'No contacts added yet',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Add friends by username or scan QR code to send doodles directly to them.',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      showFindFriendsSheet(context);
+                                    },
+                                    icon: const Icon(Icons.person_add_rounded, size: 16),
+                                    label: const Text('Find & Add Friends'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.electricPink,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                  ),
+                                ],
                               ),
                             )
                           else if (filteredFriends.isEmpty)
@@ -682,7 +672,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               child: Center(
                                 child: Text(
-                                  'No friends match "$searchQuery"',
+                                  'No contacts match "$searchQuery"',
                                   style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
                                 ),
                               ),
@@ -713,7 +703,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
-                                      color: isSelected ? const Color(0xFFFFC72C).withValues(alpha: 0.4) : Colors.transparent,
+                                      color: isSelected
+                                          ? const Color(0xFFFFC72C).withValues(alpha: 0.4)
+                                          : Colors.transparent,
                                       width: 1.5,
                                     ),
                                   ),
@@ -726,19 +718,44 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                         radius: 20,
                                         displayName: friend.name,
                                         username: friend.username,
+                                        isOnline: friend.isOnline,
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              friend.name,
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                                              ),
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    friend.name,
+                                                    style: GoogleFonts.plusJakartaSans(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (friend.streakCount > 0) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFFF7675).withValues(alpha: 0.18),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Text(
+                                                      '🔥 ${friend.streakCount}',
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: const Color(0xFFFF7675),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                             Text(
                                               '@${friend.username}',
@@ -749,18 +766,25 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                       ),
                                       AnimatedContainer(
                                         duration: const Duration(milliseconds: 160),
-                                        width: 22,
-                                        height: 22,
+                                        width: 24,
+                                        height: 24,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: isSelected ? const Color(0xFFFFC72C) : Colors.transparent,
+                                          gradient: isSelected
+                                              ? const LinearGradient(
+                                                  colors: [Color(0xFFFFC72C), Color(0xFFFF6B35)],
+                                                )
+                                              : null,
+                                          color: isSelected ? null : Colors.transparent,
                                           border: Border.all(
-                                            color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.4),
+                                            color: isSelected
+                                                ? const Color(0xFFFFC72C)
+                                                : Colors.grey.withValues(alpha: 0.4),
                                             width: 1.8,
                                           ),
                                         ),
                                         child: isSelected
-                                            ? const Icon(Icons.check_rounded, size: 14, color: Colors.black)
+                                            ? const Icon(Icons.check_rounded, size: 16, color: Colors.black)
                                             : null,
                                       ),
                                     ],
@@ -769,9 +793,70 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               );
                             }),
 
+                          if (pendingFriends.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              'PENDING FRIEND REQUESTS (${pendingFriends.length})',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            ...pendingFriends.map((pending) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                margin: const EdgeInsets.symmetric(vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    DoodleAvatar(
+                                      emoji: pending.avatarEmoji,
+                                      color: pending.avatarColor,
+                                      photoBase64: pending.avatarPhotoBase64,
+                                      radius: 16,
+                                      displayName: pending.name,
+                                      username: pending.username,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${pending.name} (@${pending.username})',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Pending',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+
                           const SizedBox(height: 16),
 
-                          // 3. GROUPS SECTION
+                          // 2. GROUPS SECTION
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -799,22 +884,18 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
 
                           if (allGroups.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Center(
-                                child: Text(
-                                  'No groups yet. Tap "+ New Group" above to start one!',
-                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
-                                ),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'No groups yet. Tap "+ New Group" above to create one!',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
                               ),
                             )
                           else if (filteredGroups.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Center(
-                                child: Text(
-                                  'No groups match "$searchQuery"',
-                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
-                                ),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'No groups match "$searchQuery"',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
                               ),
                             )
                           else
@@ -843,7 +924,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
-                                      color: isSelected ? const Color(0xFF6C5CE7).withValues(alpha: 0.4) : Colors.transparent,
+                                      color: isSelected
+                                          ? const Color(0xFF6C5CE7).withValues(alpha: 0.4)
+                                          : Colors.transparent,
                                       width: 1.5,
                                     ),
                                   ),
@@ -882,18 +965,20 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                       ),
                                       AnimatedContainer(
                                         duration: const Duration(milliseconds: 160),
-                                        width: 22,
-                                        height: 22,
+                                        width: 24,
+                                        height: 24,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: isSelected ? const Color(0xFF6C5CE7) : Colors.transparent,
                                           border: Border.all(
-                                            color: isSelected ? const Color(0xFF6C5CE7) : Colors.grey.withValues(alpha: 0.4),
+                                            color: isSelected
+                                                ? const Color(0xFF6C5CE7)
+                                                : Colors.grey.withValues(alpha: 0.4),
                                             width: 1.8,
                                           ),
                                         ),
                                         child: isSelected
-                                            ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                                            ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
                                             : null,
                                       ),
                                     ],
@@ -901,6 +986,99 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                 ),
                               );
                             }),
+
+                          const SizedBox(height: 18),
+
+                          // 3. OPTIONAL: DOODLEUP STATUS BROADCAST (Secondary option at bottom)
+                          Text(
+                            'DOODLEUP STATUS (OPTIONAL)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setSheetState(() => postToDoodleUp = !postToDoodleUp);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: postToDoodleUp
+                                    ? const Color(0xFFFFC72C).withValues(alpha: 0.14)
+                                    : (isDark ? const Color(0xFF282834) : const Color(0xFFF7F8FA)),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: postToDoodleUp
+                                      ? const Color(0xFFFFC72C)
+                                      : Colors.grey.withValues(alpha: 0.2),
+                                  width: postToDoodleUp ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: SweepGradient(
+                                        colors: [
+                                          Color(0xFFFFC72C),
+                                          Color(0xFFFF4081),
+                                          Color(0xFF6C5CE7),
+                                          Color(0xFF00CEC9),
+                                          Color(0xFFFFC72C),
+                                        ],
+                                      ),
+                                    ),
+                                    child: const Center(child: Text('🚀', style: TextStyle(fontSize: 16))),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Also share to DoodleUp Status',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                          ),
+                                        ),
+                                        Text(
+                                          'Appears as a story ring around your profile for 24h',
+                                          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF8A90A6)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.transparent,
+                                      border: Border.all(
+                                        color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.5),
+                                        width: 1.8,
+                                      ),
+                                    ),
+                                    child: postToDoodleUp
+                                        ? const Icon(Icons.check_rounded, size: 16, color: Colors.black)
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -958,7 +1136,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   } else if (postToDoodleUp) {
                                     message.write('Posted to DoodleUp! 🚀');
                                   } else {
-                                    message.write('Doodle sent to $sentCount recipient${sentCount == 1 ? '' : 's'}! 🚀');
+                                    message.write('Doodle sent to $sentCount contact${sentCount == 1 ? '' : 's'}! 🚀');
                                   }
 
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -984,17 +1162,21 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.rocket_launch_rounded,
+                                Icons.send_rounded,
                                 size: 18,
                                 color: totalRecipients > 0 ? const Color(0xFF1E1E26) : Colors.grey,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 totalRecipients == 0
-                                    ? 'Select contacts or DoodleUp'
-                                    : (postToDoodleUp && selectedContactIds.isEmpty && selectedGroupIds.isEmpty)
-                                        ? 'Post to DoodleUp 🚀'
-                                        : 'DoodleUp ($totalRecipients recipient${totalRecipients > 1 ? 's' : ''}) 🚀',
+                                    ? 'Select contacts to send'
+                                    : (selectedContactIds.length == 1 && selectedGroupIds.isEmpty && !postToDoodleUp)
+                                        ? 'Send to ${filteredFriends.firstWhere((f) => f.id == selectedContactIds.first, orElse: () => allFriends.firstWhere((f) => f.id == selectedContactIds.first)).name} 🚀'
+                                        : (postToDoodleUp && selectedContactIds.isEmpty && selectedGroupIds.isEmpty)
+                                            ? 'Post to DoodleUp Status 🚀'
+                                            : postToDoodleUp
+                                                ? 'Send to ${selectedContactIds.length + selectedGroupIds.length} & DoodleUp 🚀'
+                                                : 'Send to $totalRecipients recipient${totalRecipients > 1 ? 's' : ''} 🚀',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
@@ -1953,7 +2135,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
 
                       const SizedBox(width: 8),
 
-                      // Primary "Post DoodleUp" Thumb Action Button
+                      // Primary "Send" Thumb Action Button
                       Container(
                         height: 44,
                         decoration: BoxDecoration(
@@ -1975,14 +2157,14 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             onTap: _onSendTapped,
                             borderRadius: BorderRadius.circular(16),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.rocket_launch_rounded, size: 16, color: Colors.white),
+                                  const Icon(Icons.send_rounded, size: 16, color: Colors.white),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'DoodleUp',
+                                    'Send',
                                     style: GoogleFonts.plusJakartaSans(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13,

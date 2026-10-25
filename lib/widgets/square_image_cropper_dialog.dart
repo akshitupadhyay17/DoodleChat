@@ -3,11 +3,13 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
-/// Modal dialog that allows users to crop, zoom, pan, and rotate an image into a 1:1 square
-/// before saving as their avatar profile picture.
+/// Modal dialog that gives users full control to crop, resize, zoom, and frame their profile picture.
+/// Does NOT auto-crop upon opening: the photo is initially presented in its full aspect ratio as chosen,
+/// and the user sizes and crops it as intended.
 class SquareImageCropperDialog extends StatefulWidget {
   final Uint8List imageBytes;
 
@@ -22,6 +24,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
   bool _isLoading = true;
   String? _error;
 
+  final GlobalKey _previewKey = GlobalKey();
   final TransformationController _transformCtrl = TransformationController();
   int _rotationQuarterTurns = 0; // 0, 1, 2, 3 (each is 90°)
 
@@ -49,7 +52,8 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
         _rawImage = frame.image;
         _isLoading = false;
       });
-      _resetFit();
+      // Do NOT auto-crop: fit the entire original photo uncropped
+      _resetFit(fill: false);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -59,13 +63,19 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
     }
   }
 
-  void _resetFit() {
+  /// Centers the image in the crop box.
+  /// When [fill] is false (default): fits the ENTIRE photo with zero pre-cropping (BoxFit.contain).
+  /// When [fill] is true: scales up to fill the square box (BoxFit.cover).
+  void _resetFit({bool fill = false}) {
     if (_rawImage == null) return;
-    final w = _rawImage!.width.toDouble();
-    final h = _rawImage!.height.toDouble();
+    final isRotated = _rotationQuarterTurns % 2 == 1;
+    final w = (isRotated ? _rawImage!.height : _rawImage!.width).toDouble();
+    final h = (isRotated ? _rawImage!.width : _rawImage!.height).toDouble();
 
-    // Scale so the smaller dimension fills the crop box
-    final baseScale = math.max(_kCropBoxSize / w, _kCropBoxSize / h);
+    final baseScale = fill
+        ? math.max(_kCropBoxSize / w, _kCropBoxSize / h)
+        : math.min(_kCropBoxSize / w, _kCropBoxSize / h);
+
     final dx = (_kCropBoxSize - w * baseScale) / 2;
     final dy = (_kCropBoxSize - h * baseScale) / 2;
 
@@ -81,6 +91,8 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
     setState(() {
       _rotationQuarterTurns = (_rotationQuarterTurns + 1) % 4;
     });
+    // Re-adjust fit for the rotated aspect ratio without auto-cropping
+    _resetFit(fill: false);
   }
 
   void _zoom(double factor) {
@@ -97,34 +109,63 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
     setState(() {});
   }
 
+  /// Exports the exact crop as sized and positioned by the user.
   Future<void> _saveCrop() async {
     if (_rawImage == null) return;
 
     try {
-      // Create a 512x512 canvas to render the exact cropped portion
+      // 1. First attempt: pixel-perfect RepaintBoundary snapshot of the user's framed preview
+      try {
+        final boundary = _previewKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+        if (boundary != null) {
+          final pixelRatio = _kOutputSize / _kCropBoxSize;
+          final img = await boundary.toImage(pixelRatio: pixelRatio);
+          final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+          if (byteData != null) {
+            final base64Result = base64Encode(byteData.buffer.asUint8List());
+            if (mounted) {
+              Navigator.of(context).pop(base64Result);
+              return;
+            }
+          }
+        }
+      } catch (_) {
+        // Fall back to Canvas recording
+      }
+
+      // 2. Direct Canvas recording fallback
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(
         recorder,
         Rect.fromLTWH(0, 0, _kOutputSize.toDouble(), _kOutputSize.toDouble()),
       );
 
-      // Scale up from the 280px preview box to 512px output
+      // Clean dark background for letterboxed areas
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, _kOutputSize.toDouble(), _kOutputSize.toDouble()),
+        Paint()..color = const Color(0xFF14141E),
+      );
+
       final outputScale = _kOutputSize / _kCropBoxSize;
       canvas.scale(outputScale, outputScale);
-
-      // Apply the user's interactive pan/zoom transformation matrix
       canvas.transform(_transformCtrl.value.storage);
 
-      // Apply 90° rotations if any around image center
-      if (_rotationQuarterTurns != 0) {
-        final imgCenterX = _rawImage!.width / 2.0;
-        final imgCenterY = _rawImage!.height / 2.0;
-        canvas.translate(imgCenterX, imgCenterY);
-        canvas.rotate(_rotationQuarterTurns * math.pi / 2);
-        canvas.translate(-imgCenterX, -imgCenterY);
+      // Apply rotation matching RotatedBox layout
+      switch (_rotationQuarterTurns) {
+        case 1:
+          canvas.translate(_rawImage!.height.toDouble(), 0);
+          canvas.rotate(math.pi / 2);
+          break;
+        case 2:
+          canvas.translate(_rawImage!.width.toDouble(), _rawImage!.height.toDouble());
+          canvas.rotate(math.pi);
+          break;
+        case 3:
+          canvas.translate(0, _rawImage!.width.toDouble());
+          canvas.rotate(3 * math.pi / 2);
+          break;
       }
 
-      // Draw the original raw image with high filter quality
       final paint = Paint()
         ..isAntiAlias = true
         ..filterQuality = FilterQuality.high;
@@ -143,10 +184,16 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to crop photo: $e')),
+          SnackBar(content: Text('Failed to save photo: $e')),
         );
       }
     }
+  }
+
+  /// Directly saves the original chosen photo without any square cropping.
+  void _useOriginal() {
+    final base64Result = base64Encode(widget.imageBytes);
+    Navigator.of(context).pop(base64Result);
   }
 
   @override
@@ -157,7 +204,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: const BoxConstraints(maxWidth: 440),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF14141E) : Colors.white,
           borderRadius: BorderRadius.circular(28),
@@ -195,7 +242,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Crop Profile Picture',
+                          'Size & Crop Photo',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -203,7 +250,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                           ),
                         ),
                         Text(
-                          'Pinch or drag to fit your avatar',
+                          'Pinch, zoom, or drag to size your avatar',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             color: const Color(0xFF8A90A6),
@@ -226,7 +273,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
             Container(
               height: 320,
               width: double.infinity,
-              color: Colors.black,
+              color: const Color(0xFF0C0D14),
               alignment: Alignment.center,
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppTheme.electricPink))
@@ -238,28 +285,34 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                       : Stack(
                           alignment: Alignment.center,
                           children: [
-                            // Interactive pan/zoom area
+                            // Interactive pan/zoom area (Captured without overlay borders)
                             SizedBox(
                               width: _kCropBoxSize,
                               height: _kCropBoxSize,
-                              child: ClipRect(
-                                child: InteractiveViewer(
-                                  transformationController: _transformCtrl,
-                                  minScale: 0.2,
-                                  maxScale: 6.0,
-                                  boundaryMargin: const EdgeInsets.all(400),
-                                  child: RotatedBox(
-                                    quarterTurns: _rotationQuarterTurns,
-                                    child: RawImage(
-                                      image: _rawImage,
-                                      fit: BoxFit.none,
+                              child: RepaintBoundary(
+                                key: _previewKey,
+                                child: ClipRect(
+                                  child: Container(
+                                    color: const Color(0xFF14141E),
+                                    child: InteractiveViewer(
+                                      transformationController: _transformCtrl,
+                                      minScale: 0.1,
+                                      maxScale: 8.0,
+                                      boundaryMargin: const EdgeInsets.all(400),
+                                      child: RotatedBox(
+                                        quarterTurns: _rotationQuarterTurns,
+                                        child: RawImage(
+                                          image: _rawImage,
+                                          fit: BoxFit.none,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
 
-                            // Circular & Square Avatar Cutout Guide Overlay
+                            // Guide Overlay (Cyan border, circular avatar boundary, and rule-of-thirds grid)
                             IgnorePointer(
                               child: Container(
                                 width: _kCropBoxSize,
@@ -284,7 +337,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                                         ),
                                       ),
                                     ),
-                                    // Rule-of-thirds grid
+                                    // Rule-of-thirds grid lines
                                     Column(
                                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
@@ -307,9 +360,9 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                         ),
             ),
 
-            // Adjustment Toolbar (Rotate, Zoom In, Zoom Out, Reset)
+            // Adjustment Toolbar (Rotate, Fit Whole, Fill Square, Zoom -, Zoom +)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -318,6 +371,18 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                     label: 'Rotate',
                     isDark: isDark,
                     onTap: _rotate90,
+                  ),
+                  _buildToolAction(
+                    icon: Icons.aspect_ratio_rounded,
+                    label: 'Fit Whole',
+                    isDark: isDark,
+                    onTap: () => _resetFit(fill: false),
+                  ),
+                  _buildToolAction(
+                    icon: Icons.crop_square_rounded,
+                    label: 'Fill Square',
+                    isDark: isDark,
+                    onTap: () => _resetFit(fill: true),
                   ),
                   _buildToolAction(
                     icon: Icons.zoom_out_rounded,
@@ -331,59 +396,62 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                     isDark: isDark,
                     onTap: () => _zoom(1.15),
                   ),
-                  _buildToolAction(
-                    icon: Icons.center_focus_strong_rounded,
-                    label: 'Center',
-                    isDark: isDark,
-                    onTap: _resetFit,
-                  ),
                 ],
               ),
             ),
 
             const Divider(height: 1, thickness: 1),
 
-            // Bottom Actions (Cancel & Save)
+            // Bottom Actions (Cancel, Use Full Photo, Save Crop)
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        side: BorderSide(
-                          color: isDark ? Colors.white24 : Colors.black12,
-                        ),
-                      ),
-                      onPressed: () => Navigator.of(context).pop(null),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white70 : const Color(0xFF5D6275),
-                        ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(null),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white60 : const Color(0xFF5D6275),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.electricPink,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
+                  const Spacer(),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(
+                        color: isDark ? Colors.white24 : Colors.black12,
                       ),
-                      onPressed: _saveCrop,
-                      icon: const Icon(Icons.check_rounded, size: 18),
-                      label: Text(
-                        'Save Photo',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w800,
-                        ),
+                    ),
+                    onPressed: _useOriginal,
+                    child: Text(
+                      'Use Full Photo',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        color: isDark ? Colors.white : const Color(0xFF14141E),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.electricPink,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    onPressed: _saveCrop,
+                    icon: const Icon(Icons.check_rounded, size: 16),
+                    label: Text(
+                      'Save Crop',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
                       ),
                     ),
                   ),
@@ -406,7 +474,7 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
