@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/chat_contact.dart';
 import '../models/doodle_group.dart';
 import '../services/chat_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/doodle_avatar.dart';
 import '../widgets/find_friends_sheet.dart';
 import '../widgets/story_viewer_sheet.dart';
@@ -52,21 +53,33 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameCtrl = TextEditingController();
     String selectedEmoji = '👥';
     final chatService = ChatService();
-    final friends = chatService.contacts.where((c) => c.friendshipStatus == FriendshipStatus.accepted).toList();
+    final friends = chatService.contacts
+        .where((c) => c.friendshipStatus == FriendshipStatus.accepted)
+        .toList();
     final selectedUsernames = <String>{};
 
     showDialog(
       context: context,
       builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return StatefulBuilder(
           builder: (ctx, setDlgState) {
             return AlertDialog(
+              backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
-                  Text(selectedEmoji, style: const TextStyle(fontSize: 26)),
+                  Text(selectedEmoji, style: const TextStyle(fontSize: 24)),
                   const SizedBox(width: 8),
-                  Text('New Doodle Group', style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold)),
+                  Text(
+                    'New Doodle Group',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    ),
+                  ),
                 ],
               ),
               content: SingleChildScrollView(
@@ -76,28 +89,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     TextField(
                       controller: nameCtrl,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Group name (e.g. Doodle Squad)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8A90A6)),
+                        filled: true,
+                        fillColor: isDark ? AppTheme.darkSurface : const Color(0xFFF3F4F8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text('Select Emoji Icon:', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 16),
+                    Text(
+                      'GROUP ICON',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                        color: const Color(0xFF8A90A6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: ['👥', '🎨', '⚡️', '🐥', '🔥', '👑'].map((em) {
+                      children: ['👥', '🎨', '⚡️', '🔥', '👑', '💫'].map((em) {
+                        final isSel = selectedEmoji == em;
                         return GestureDetector(
                           onTap: () => setDlgState(() => selectedEmoji = em),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: selectedEmoji == em ? const Color(0xFFFFC72C).withValues(alpha: 0.3) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
+                              color: isSel
+                                  ? AppTheme.electricPink.withOpacity(0.18)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: selectedEmoji == em ? const Color(0xFFFFC72C) : Colors.transparent,
-                                width: 2,
+                                color: isSel ? AppTheme.electricPink : Colors.transparent,
+                                width: 1.8,
                               ),
                             ),
                             child: Text(em, style: const TextStyle(fontSize: 22)),
@@ -105,20 +137,47 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 14),
-                    Text('Add Friends:', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 16),
+                    Text(
+                      'ADD FRIENDS',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                        color: const Color(0xFF8A90A6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     if (friends.isEmpty)
-                      Text('No friends to add yet. You will be the first member!', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey))
+                      Text(
+                        'No friends yet. Add friends using their handle to invite them.',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: const Color(0xFF8A90A6),
+                        ),
+                      )
                     else
                       ...friends.map((f) {
                         final isSelected = selectedUsernames.contains(f.username);
                         return CheckboxListTile(
                           value: isSelected,
                           dense: true,
+                          activeColor: AppTheme.electricPink,
                           contentPadding: EdgeInsets.zero,
-                          title: Text(f.name, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600)),
-                          subtitle: Text('@${f.username}', style: const TextStyle(fontSize: 11)),
+                          title: Text(
+                            f.name,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '@${f.username}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: const Color(0xFF8A90A6),
+                            ),
+                          ),
                           onChanged: (val) {
                             setDlgState(() {
                               if (val == true) {
@@ -136,23 +195,45 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final name = nameCtrl.text.trim();
-                    if (name.isEmpty) return;
-                    chatService.createGroup(name, selectedEmoji, selectedUsernames.toList());
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Group "$name" created! 👥')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFC72C),
-                    foregroundColor: Colors.black,
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.plusJakartaSans(color: const Color(0xFF8A90A6)),
                   ),
-                  child: const Text('Create Group'),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final name = nameCtrl.text.trim();
+                      if (name.isEmpty) return;
+                      chatService.createGroup(name, selectedEmoji, selectedUsernames.toList());
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Group "$name" created!',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: AppTheme.electricPink,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(
+                      'Create Group',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
               ],
             );
@@ -181,99 +262,145 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF14141B) : const Color(0xFFFFFDF8),
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       body: SafeArea(
         child: isProfileTab
             ? const ProfileScreen()
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // App Bar with Logo & Name "Doodle"
+                  // Sleek Top App Bar (Instagram/Snapchat style)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
                             Container(
-                              width: 38,
-                              height: 38,
+                              width: 36,
+                              height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFC72C),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.asset(
-                                  'assets/images/logo.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Center(child: Text('🦆', style: TextStyle(fontSize: 20))),
+                                gradient: const LinearGradient(
+                                  colors: [AppTheme.electricPink, AppTheme.cyberViolet],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.electricPink.withOpacity(0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
+                              child: const Icon(Icons.gesture_rounded, color: Colors.white, size: 20),
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              'Doodle',
-                              style: GoogleFonts.gaegu(
-                                fontSize: 30,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                              'doodle',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.7,
+                                color: isDark ? Colors.white : const Color(0xFF0E1017),
                               ),
                             ),
                           ],
                         ),
-                        // Invite others shortcut
-                        TextButton.icon(
-                          onPressed: _showAddFriendDialog,
-                          icon: const Icon(Icons.person_add_rounded, size: 18, color: Color(0xFFE5A800)),
-                          label: Text(
-                            'Invite others',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: const Color(0xFFE5A800),
+
+                        // Action Buttons: Find/Add Friends & Camera
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: _showAddFriendDialog,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppTheme.darkCard : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.person_add_rounded,
+                                      size: 16,
+                                      color: AppTheme.electricPink,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Add Friends',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                          style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFC72C).withValues(alpha: 0.15),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          ),
+                          ],
                         ),
                       ],
                     ),
                   ),
 
-                  // Search Bar
+                  // Spotlight iOS Search Bar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1A1A22) : Colors.black.withValues(alpha: 0.04),
+                        color: isDark ? AppTheme.darkCard : const Color(0xFFF0F2F7),
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.transparent,
+                        ),
                       ),
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) => setState(() => _searchQuery = val),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search, color: Color(0xFFFFC72C)),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF8A90A6)),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF8A90A6)),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
                           hintText: 'Search chats, doodles, groups...',
-                          hintStyle: GoogleFonts.outfit(fontSize: 14),
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            color: const Color(0xFF8A90A6),
+                          ),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                       ),
                     ),
                   ),
 
-                  // DoodleUp Stories Row (Horizontal Bar)
+                  // Instagram / Snapchat Stories Bar
                   _buildStoriesBar(context, chatService, user, isDark),
 
-                  // Tab Selector: Chats vs Groups
+                  // Filter Pills: All Chats vs Groups
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
                     child: Row(
                       children: [
                         _buildFilterPill(
@@ -281,6 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           count: filteredContacts.length,
                           isSelected: _activeListTab == 0,
                           onTap: () => setState(() => _activeListTab = 0),
+                          isDark: isDark,
                         ),
                         const SizedBox(width: 8),
                         _buildFilterPill(
@@ -288,6 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           count: filteredGroups.length,
                           isSelected: _activeListTab == 1,
                           onTap: () => setState(() => _activeListTab = 1),
+                          isDark: isDark,
                         ),
                         const Spacer(),
                         if (_activeListTab == 1)
@@ -296,19 +425,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
+                                color: AppTheme.cyberViolet.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.add_rounded, size: 14, color: Color(0xFF6C5CE7)),
+                                  const Icon(Icons.add_rounded, size: 14, color: AppTheme.cyberViolet),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Create Group',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF6C5CE7),
+                                    'New Group',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.cyberViolet,
                                     ),
                                   ),
                                 ],
@@ -319,20 +448,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
+                  // Main List
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                       children: [
-                        // "You" Status Card
+                        // You Card
                         _buildYouCard(user, isDark),
                         const SizedBox(height: 12),
 
-                        // Incoming Friend Requests (only on chats tab)
+                        // Incoming Friend Requests
                         if (_activeListTab == 0) ...[
                           _buildIncomingRequestsSection(context, chatService, isDark),
                         ],
 
-                        // Content List: Chats or Groups
+                        // Chats or Groups List
                         if (_activeListTab == 0)
                           _buildChatsList(context, filteredContacts, isDark)
                         else
@@ -344,13 +474,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
       ),
 
-      // Bottom Navigation Bar
+      // Premium Frosted Glass Bottom Navigation Bar
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF16161D) : Colors.white,
+          color: isDark ? AppTheme.darkCard : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
+              width: 1,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withOpacity(isDark ? 0.35 : 0.05),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -360,18 +496,21 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left: Chats Tab
+            // Chats Tab Icon
             IconButton(
               icon: Icon(
                 Icons.chat_bubble_rounded,
-                size: 28,
-                color: _currentTabIndex == 0 ? const Color(0xFFFFC72C) : Colors.grey,
+                size: 26,
+                color: _currentTabIndex == 0 ? AppTheme.electricPink : const Color(0xFF8A90A6),
               ),
               tooltip: 'Chats',
-              onPressed: () => setState(() => _currentTabIndex = 0),
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                setState(() => _currentTabIndex = 0);
+              },
             ),
 
-            // Middle: Floating Quick Draw DoodleUp Button
+            // Middle: Floating Gradient DoodleUp Button
             GestureDetector(
               onTap: () {
                 HapticFeedback.mediumImpact();
@@ -381,42 +520,45 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               child: Container(
-                width: 58,
-                height: 58,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFFFC72C), Color(0xFFFF6B35)],
+                    colors: [AppTheme.electricPink, Color(0xFFFF5E3A)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFC72C).withValues(alpha: 0.4),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
+                      color: AppTheme.electricPink.withOpacity(0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.edit_rounded,
+                    Icons.brush_rounded,
                     color: Colors.white,
-                    size: 28,
+                    size: 24,
                   ),
                 ),
               ),
             ),
 
-            // Right: Settings / Profile Tab
+            // Profile Tab Icon
             IconButton(
               icon: Icon(
-                Icons.settings_rounded,
-                size: 28,
-                color: _currentTabIndex == 1 ? const Color(0xFFFFC72C) : Colors.grey,
+                Icons.person_rounded,
+                size: 26,
+                color: _currentTabIndex == 1 ? AppTheme.electricPink : const Color(0xFF8A90A6),
               ),
-              tooltip: 'Settings',
-              onPressed: () => setState(() => _currentTabIndex = 1),
+              tooltip: 'Profile',
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                setState(() => _currentTabIndex = 1);
+              },
             ),
           ],
         ),
@@ -429,38 +571,51 @@ class _HomeScreenState extends State<HomeScreen> {
     required int count,
     required bool isSelected,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? (isDark ? Colors.white : const Color(0xFF0E1017))
+              : (isDark ? AppTheme.darkCard : const Color(0xFFF0F2F7)),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
             Text(
               label,
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.black : Colors.grey,
+                fontWeight: FontWeight.w700,
+                color: isSelected
+                    ? (isDark ? Colors.black : Colors.white)
+                    : const Color(0xFF8A90A6),
               ),
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.black.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.2),
+                color: isSelected
+                    ? (isDark ? Colors.black12 : Colors.white24)
+                    : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '$count',
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.black : Colors.grey,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: isSelected
+                      ? (isDark ? Colors.black : Colors.white)
+                      : const Color(0xFF8A90A6),
                 ),
               ),
             ),
@@ -474,13 +629,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final contactsWithStories = chatService.contacts.where((c) => c.hasActiveStory).toList();
 
     return Container(
-      height: 94,
+      height: 98,
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          // Your Story
+          // Your Story Bubble
           GestureDetector(
             onTap: () {
               if (user.hasActiveStory) {
@@ -514,34 +669,39 @@ class _HomeScreenState extends State<HomeScreen> {
                         activeStory: user.activeStory,
                         displayName: 'You',
                         username: user.username,
-                        radius: 26,
+                        radius: 27,
                       ),
                       if (!user.hasActiveStory)
                         Positioned(
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            width: 18,
-                            height: 18,
+                            width: 20,
+                            height: 20,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFC72C),
+                              gradient: const LinearGradient(
+                                colors: [AppTheme.electricPink, Color(0xFFFF5E3A)],
+                              ),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(
+                                color: isDark ? AppTheme.darkBackground : Colors.white,
+                                width: 2,
+                              ),
                             ),
                             child: const Center(
-                              child: Icon(Icons.add, size: 12, color: Colors.black),
+                              child: Icon(Icons.add, size: 12, color: Colors.white),
                             ),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'Your Story',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white70 : Colors.black87,
+                      color: isDark ? const Color(0xFFA5ABC0) : const Color(0xFF5D6275),
                     ),
                   ),
                 ],
@@ -581,20 +741,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       activeStory: contact.activeStory,
                       displayName: contact.name,
                       username: contact.username,
-                      radius: 26,
+                      radius: 27,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     SizedBox(
-                      width: 60,
+                      width: 62,
                       child: Text(
                         contact.name.split(' ').first,
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : Colors.black87,
+                          color: isDark ? Colors.white : const Color(0xFF0E1017),
                         ),
                       ),
                     ),
@@ -612,19 +772,19 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFFFFC72C).withValues(alpha: 0.2),
-            const Color(0xFFFFB703).withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFFFC72C).withValues(alpha: 0.4),
-          width: 1.5,
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -636,7 +796,7 @@ class _HomeScreenState extends State<HomeScreen> {
             activeStory: user.activeStory,
             displayName: 'You',
             username: user.username,
-            radius: 26,
+            radius: 24,
             onTap: () => setState(() => _currentTabIndex = 1),
           ),
           const SizedBox(width: 14),
@@ -648,45 +808,45 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'You',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFC72C),
-                        borderRadius: BorderRadius.circular(6),
+                        color: AppTheme.electricPink.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '@${user.username}',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.electricPink,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   user.bio,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.patrickHand(
-                    fontSize: 15,
-                    color: isDark ? Colors.white70 : Colors.black87,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFF8A90A6) : const Color(0xFF6B7280),
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.qr_code_rounded, color: Color(0xFFFFB703)),
+            icon: const Icon(Icons.qr_code_rounded, color: AppTheme.electricPink, size: 22),
             tooltip: 'My QR Code',
             onPressed: () => setState(() => _currentTabIndex = 1),
           ),
@@ -706,20 +866,27 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            const Text('👋', style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 6),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.electricPink,
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
               'INCOMING DOODLE REQUESTS (${pendingRequests.length})',
-              style: GoogleFonts.outfit(
-                fontSize: 12,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.1,
-                color: const Color(0xFFFF4081),
+                color: AppTheme.electricPink,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         ...pendingRequests.map((req) => _buildRequestCard(context, req, isDark)),
         const SizedBox(height: 14),
       ],
@@ -737,16 +904,32 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(40.0),
           child: Column(
             children: [
-              const Text('🎨', style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 12),
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : const Color(0xFFF0F2F7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.brush_rounded, size: 28, color: Color(0xFF8A90A6)),
+              ),
+              const SizedBox(height: 14),
               Text(
-                'No chats found',
-                style: GoogleFonts.gaegu(fontSize: 22, fontWeight: FontWeight.bold),
+                'No conversations yet',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0E1017),
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Tap "Invite others" to send a doodle request!',
-                style: GoogleFonts.outfit(color: Colors.grey),
+                'Tap "Add Friends" to connect and exchange doodles!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: const Color(0xFF8A90A6),
+                ),
               ),
             ],
           ),
@@ -766,17 +949,32 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(40.0),
           child: Column(
             children: [
-              const Text('👥', style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 12),
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : const Color(0xFFF0F2F7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.groups_rounded, size: 28, color: Color(0xFF8A90A6)),
+              ),
+              const SizedBox(height: 14),
               Text(
-                'No Doodle Groups Yet',
-                style: GoogleFonts.gaegu(fontSize: 22, fontWeight: FontWeight.bold),
+                'No Groups Yet',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0E1017),
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Create a group and doodle with multiple friends together!',
+                'Create a group to doodle with your close circle together!',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(color: Colors.grey),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: const Color(0xFF8A90A6),
+                ),
               ),
             ],
           ),
@@ -787,29 +985,32 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: groups.map((g) {
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E26) : Colors.white,
+            color: isDark ? AppTheme.darkCard : Colors.white,
             borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: Container(
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: g.color.withValues(alpha: 0.25),
+                color: g.color.withOpacity(0.2),
                 shape: BoxShape.circle,
                 border: Border.all(color: g.color, width: 2),
               ),
-              child: Center(child: Text(g.avatarEmoji, style: const TextStyle(fontSize: 24))),
+              child: Center(child: Text(g.avatarEmoji, style: const TextStyle(fontSize: 22))),
             ),
             title: Row(
               children: [
@@ -817,39 +1018,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     g.name,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF7675).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('🔥', style: TextStyle(fontSize: 12)),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${g.streakCount}',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFFF7675),
+                if (g.streakCount > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.sunsetOrange.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 11)),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${g.streakCount}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.sunsetOrange,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
             subtitle: Text(
-              '${g.memberUsernames.length} members • ${g.latestDoodle != null ? 'Active doodle 🎨' : 'Idle'}',
-              style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+              '${g.memberUsernames.length} members • ${g.latestDoodle != null ? 'Active canvas 🎨' : 'Idle'}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: const Color(0xFF8A90A6),
+              ),
             ),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF8A90A6)),
             onTap: () {
               Navigator.push(
                 context,
@@ -868,9 +1078,9 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFF4081).withValues(alpha: 0.3)),
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.electricPink.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -887,38 +1097,53 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   '@${contact.username}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : const Color(0xFF0E1017),
+                  ),
                 ),
                 Text(
                   contact.name,
-                  style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
                 ),
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              chatService.respondFriendRequest(contact.username, true);
-              HapticFeedback.mediumImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Accepted @${contact.username}! Start doodling 🎨'),
-                  backgroundColor: const Color(0xFF00B894),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFC72C),
-              foregroundColor: const Color(0xFF1E1E26),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+              ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Accept 🦆', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            child: ElevatedButton(
+              onPressed: () {
+                chatService.respondFriendRequest(contact.username, true);
+                HapticFeedback.mediumImpact();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Accepted @${contact.username}! Start doodling ✨'),
+                    backgroundColor: AppTheme.acidLime,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Accept',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 12),
+              ),
+            ),
           ),
           const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+            icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF8A90A6)),
             tooltip: 'Decline',
             onPressed: () {
               chatService.respondFriendRequest(contact.username, false);
@@ -931,37 +1156,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildContactCard(BuildContext context, ChatContact contact, bool isDark) {
     Color statusBgColor = Colors.transparent;
-    Color statusTextColor = Colors.grey;
+    Color statusTextColor = const Color(0xFF8A90A6);
     String statusLabel = 'Ready to doodle';
     IconData statusIcon = Icons.edit_note_rounded;
 
     if (contact.friendshipStatus == FriendshipStatus.requestSent) {
-      statusBgColor = const Color(0xFF6C5CE7).withValues(alpha: 0.15);
-      statusTextColor = const Color(0xFF6C5CE7);
-      statusLabel = 'Request sent • Waiting for approval ⏳';
+      statusBgColor = AppTheme.cyberViolet.withOpacity(0.15);
+      statusTextColor = AppTheme.cyberViolet;
+      statusLabel = 'Pending response';
       statusIcon = Icons.hourglass_top_rounded;
     } else if (contact.doodleStatus == DoodleChatStatus.receivedMustErase) {
-      statusBgColor = const Color(0xFFFF4081).withValues(alpha: 0.15);
-      statusTextColor = const Color(0xFFFF4081);
-      statusLabel = 'Doodle received • Must erase!';
-      statusIcon = Icons.cleaning_services_rounded;
+      statusBgColor = AppTheme.electricPink.withOpacity(0.18);
+      statusTextColor = AppTheme.electricPink;
+      statusLabel = 'New Doodle • Erase to reply';
+      statusIcon = Icons.auto_fix_high_rounded;
     } else if (contact.doodleStatus == DoodleChatStatus.sentWaitingForErase) {
-      statusBgColor = const Color(0xFFFFC72C).withValues(alpha: 0.15);
-      statusTextColor = const Color(0xFFE5A800);
-      statusLabel = 'Sent • Waiting for wipe ⏳';
+      statusBgColor = AppTheme.cyberViolet.withOpacity(0.15);
+      statusTextColor = AppTheme.cyberViolet;
+      statusLabel = 'Delivered • Waiting to erase';
       statusIcon = Icons.hourglass_top_rounded;
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -996,9 +1224,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   contact.name,
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0E1017),
                   ),
                 ),
                 if (contact.streakCount > 0) ...[
@@ -1006,23 +1235,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF7675).withValues(alpha: 0.15),
+                      color: AppTheme.sunsetOrange.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFFF7675).withValues(alpha: 0.35),
-                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🔥', style: TextStyle(fontSize: 12)),
+                        const Text('🔥', style: TextStyle(fontSize: 11)),
                         const SizedBox(width: 2),
                         Text(
                           '${contact.streakCount}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFFF7675),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.sunsetOrange,
                           ),
                         ),
                       ],
@@ -1033,9 +1259,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Text(
               contact.lastActive,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                color: Colors.grey,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: const Color(0xFF8A90A6),
               ),
             ),
           ],
@@ -1043,7 +1269,7 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -1053,13 +1279,13 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(statusIcon, size: 14, color: statusTextColor),
+                  Icon(statusIcon, size: 13, color: statusTextColor),
                   const SizedBox(width: 4),
                   Text(
                     statusLabel,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                       color: statusTextColor,
                     ),
                   ),
@@ -1068,7 +1294,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF8A90A6)),
         onTap: () {
           Navigator.push(
             context,

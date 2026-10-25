@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/chat_service.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -15,30 +17,30 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  int _step = 0; // 0 = Username only, 1 = Profile selection / auto-select
+  int _step = 0; // 0 = Username, 1 = Profile avatar
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _customEmojiController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  String _selectedAvatar = '🦆';
-  Color _selectedAvatarColor = const Color(0xFFFFC72C);
+  String _selectedAvatar = '⚡️';
+  Color _selectedAvatarColor = AppTheme.electricPink;
   String? _selectedPhotoBase64;
 
   final List<String> _givenAvatars = [
-    '🦆', '🐱', '🎨', '⚡️', '🌸', '🦊',
-    '🐸', '🚀', '🐼', '👾', '🦄', '🍩',
+    '⚡️', '🔥', '✨', '🪐', '👾', '🌸',
+    '🖤', '🎧', '🛹', '🎨', '🕶️', '💎',
   ];
 
   final List<Color> _givenColors = [
-    const Color(0xFFFFC72C), // Duck yellow
-    const Color(0xFFFF7675), // Coral red
-    const Color(0xFF74B9FF), // Sky blue
-    const Color(0xFF55EFC4), // Mint
-    const Color(0xFFA29BFE), // Lavender
-    const Color(0xFFFF6B81), // Pink
-    const Color(0xFF00CEC9), // Cyan
-    const Color(0xFFFFA07A), // Peach
+    AppTheme.electricPink,
+    AppTheme.cyberViolet,
+    AppTheme.neonYellow,
+    AppTheme.sunsetOrange,
+    AppTheme.electricCyan,
+    AppTheme.acidLime,
+    const Color(0xFF007AFF),
+    const Color(0xFF1E202E),
   ];
 
   String get _cleanedHandle => _usernameController.text
@@ -78,10 +80,10 @@ class _AuthScreenState extends State<AuthScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Username must be at least 3 characters (letters, numbers, _)',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+            'Username must be at least 3 characters',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
-          backgroundColor: const Color(0xFFFF4081),
+          backgroundColor: AppTheme.electricPink,
         ),
       );
       return;
@@ -109,7 +111,7 @@ class _AuthScreenState extends State<AuthScreen> {
     chatService.currentUser.avatarEmoji = finalAvatar;
     chatService.currentUser.avatarColor = finalColor;
     chatService.currentUser.profilePicBase64 = finalPhoto;
-    chatService.currentUser.bio = 'Doodling away ✨';
+    chatService.currentUser.bio = 'Doodling in real-time ✨';
     chatService.isLoggedIn = true;
     chatService.isOnboarded = true;
 
@@ -118,7 +120,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
     );
   }
 
@@ -134,96 +141,99 @@ class _AuthScreenState extends State<AuthScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF14141B) : const Color(0xFFFFFDF8),
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       body: SafeArea(
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 320),
+          duration: const Duration(milliseconds: 300),
           child: _step == 0 ? _buildUsernameStep(isDark) : _buildProfileStep(isDark),
         ),
       ),
     );
   }
 
-  // ───────────────────────── STEP 1: ONLY USERNAME ─────────────────────────
+  // ───────────────────────── STEP 1: USERNAME ─────────────────────────
   Widget _buildUsernameStep(bool isDark) {
     return Padding(
       key: const ValueKey('step-username'),
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
 
-          // Duck Icon & App Name
+          // Header
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFC72C),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Center(child: Text('🦆', style: TextStyle(fontSize: 24))),
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.electricPink, AppTheme.cyberViolet],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: const Icon(Icons.gesture_rounded, color: Colors.white, size: 20),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Text(
-                'Doodle',
-                style: GoogleFonts.gaegu(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                'doodle',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.6,
+                  color: isDark ? Colors.white : const Color(0xFF0E1017),
                 ),
               ),
             ],
           ),
 
+          const SizedBox(height: 48),
+
+          Text(
+            'Claim your\n@handle',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+              height: 1.15,
+              letterSpacing: -1.0,
+              color: isDark ? Colors.white : const Color(0xFF0E1017),
+            ),
+          ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 10),
+
+          Text(
+            'Friends will use your handle to send ephemeral doodles and find your canvas.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              height: 1.45,
+              color: isDark ? const Color(0xFFA5ABC0) : const Color(0xFF5D6275),
+            ),
+          ),
+
           const SizedBox(height: 36),
 
-          Text(
-            'Choose your @username',
-            style: GoogleFonts.gaegu(
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF1E1E26),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Pick a unique handle. Friends will use this to find you and send doodle requests.',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: isDark ? Colors.white70 : Colors.black54,
-              height: 1.35,
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Username Input Container
+          // Modern iOS-style Input Card
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _isHandleValid ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.3),
+                color: _isHandleValid
+                    ? AppTheme.electricPink
+                    : (isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.08)),
                 width: _isHandleValid ? 2 : 1.2,
               ),
               boxShadow: [
                 BoxShadow(
                   color: _isHandleValid
-                      ? const Color(0xFFFFC72C).withValues(alpha: 0.2)
-                      : Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 12,
+                      ? AppTheme.electricPink.withOpacity(0.2)
+                      : Colors.black.withOpacity(0.04),
+                  blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -232,10 +242,10 @@ class _AuthScreenState extends State<AuthScreen> {
               children: [
                 Text(
                   '@',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFFFB703),
+                    fontWeight: FontWeight.w800,
+                    color: _isHandleValid ? AppTheme.electricPink : const Color(0xFF8A90A6),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -243,23 +253,36 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: TextField(
                     controller: _usernameController,
                     autofocus: true,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
                     ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
                     ],
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: 'yourname',
-                      hintStyle: GoogleFonts.outfit(fontSize: 20, color: Colors.grey.shade400),
+                      hintText: 'username',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6B7280),
+                      ),
                       border: InputBorder.none,
                     ),
                   ),
                 ),
                 if (_isHandleValid)
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF00B894), size: 24),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.acidLime,
+                    ),
+                    child: const Icon(Icons.check, color: Colors.black, size: 16),
+                  ).animate().scale(duration: 200.ms, curve: Curves.easeOutBack),
               ],
             ),
           ),
@@ -267,39 +290,65 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 12),
           Text(
             _isHandleValid
-                ? '✨ Available as @$_cleanedHandle'
-                : '• 3 or more characters (letters, numbers, _)',
-            style: GoogleFonts.outfit(
-              fontSize: 13,
+                ? '✨ Ready as @$_cleanedHandle'
+                : 'Letters, numbers, and underscores (min 3 chars)',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: _isHandleValid ? const Color(0xFF00B894) : Colors.grey,
+              color: _isHandleValid ? AppTheme.acidLime : const Color(0xFF8A90A6),
             ),
           ),
 
           const Spacer(),
 
-          // Uniform Action Button (Height 54px)
-          SizedBox(
+          // CTA Continue Button
+          Container(
             width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: _isHandleValid ? _onContinueUsername : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC72C),
-                foregroundColor: const Color(0xFF1E1E26),
-                disabledBackgroundColor: isDark ? Colors.white12 : Colors.grey.shade200,
-                disabledForegroundColor: Colors.grey,
-                elevation: _isHandleValid ? 2 : 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Continue ➜',
-                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: _isHandleValid
+                  ? const LinearGradient(
+                      colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+                    )
+                  : null,
+              color: _isHandleValid ? null : (isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: _isHandleValid
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.electricPink.withOpacity(0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isHandleValid ? _onContinueUsername : null,
+                borderRadius: BorderRadius.circular(20),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Continue',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: _isHandleValid ? Colors.white : const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
+                        color: _isHandleValid ? Colors.white : const Color(0xFF9CA3AF),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -309,80 +358,82 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // ───────────────────────── STEP 2: PROFILE CUSTOM / SELECT FROM GIVEN / AUTO SELECT ─────────────────────────
+  // ───────────────────────── STEP 2: PROFILE SETUP ─────────────────────────
   Widget _buildProfileStep(bool isDark) {
     return SingleChildScrollView(
       key: const ValueKey('step-profile'),
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Navigation (Back button + Handle)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
                 onPressed: () => setState(() => _step = 0),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFC72C).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.electricPink.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   '@$_cleanedHandle',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFE5A800),
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.electricPink,
                   ),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           Text(
-            'Style Your Doodle Avatar 🎨',
-            style: GoogleFonts.gaegu(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF1E1E26),
+            'Your Persona',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 30,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.8,
+              color: isDark ? Colors.white : const Color(0xFF0E1017),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
-            'Select from given avatars, type any custom emoji, or tap auto-select to start instantly!',
-            style: GoogleFonts.outfit(
+            'Choose your signature avatar and accent color, or upload a photo.',
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
-              color: isDark ? Colors.white70 : Colors.black54,
-              height: 1.3,
+              color: isDark ? const Color(0xFFA5ABC0) : const Color(0xFF5D6275),
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
-          // Big Interactive Live Avatar Preview with Custom Photo Support
+          // Avatar Preview with Camera Overlay
           Center(
             child: Stack(
               alignment: Alignment.center,
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
-                  width: 96,
-                  height: 96,
+                  width: 104,
+                  height: 104,
                   decoration: BoxDecoration(
                     color: _selectedAvatarColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
+                    border: Border.all(
+                      color: isDark ? AppTheme.darkCard : Colors.white,
+                      width: 4,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: _selectedAvatarColor.withValues(alpha: 0.45),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                        color: _selectedAvatarColor.withOpacity(0.45),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
@@ -401,59 +452,78 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 Positioned(
                   right: 0,
-                  bottom: 0,
+                  bottom: 2,
                   child: GestureDetector(
                     onTap: _pickProfilePhoto,
                     child: Container(
-                      padding: const EdgeInsets.all(7),
+                      padding: const EdgeInsets.all(8),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFFC72C),
+                        color: Colors.white,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 16,
+                        color: Color(0xFF0E1017),
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextButton.icon(
                   onPressed: _pickProfilePhoto,
-                  icon: const Icon(Icons.photo_library_rounded, size: 16, color: Color(0xFFFFC72C)),
+                  icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.electricPink),
                   label: Text(
-                    _selectedPhotoBase64 != null ? 'Change Photo' : 'Upload Profile Pic 📷',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFFFFC72C)),
+                    _selectedPhotoBase64 != null ? 'Change Photo' : 'Upload Photo',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppTheme.electricPink,
+                    ),
                   ),
                 ),
                 if (_selectedPhotoBase64 != null) ...[
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () => setState(() => _selectedPhotoBase64 = null),
-                    child: Text('Use Emoji', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey)),
+                    child: Text(
+                      'Use Symbol',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: const Color(0xFF8A90A6),
+                      ),
+                    ),
                   ),
                 ],
               ],
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          // Select From Given: Avatars
           Text(
-            'SELECT AVATAR',
-            style: GoogleFonts.outfit(
-              fontSize: 12,
+            'CHOOSE SYMBOL',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
-              color: isDark ? Colors.white60 : Colors.black54,
+              color: const Color(0xFF8A90A6),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           Wrap(
             spacing: 12,
@@ -467,66 +537,40 @@ class _AuthScreenState extends State<AuthScreen> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  width: 52,
-                  height: 52,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFFFC72C).withValues(alpha: 0.25)
-                        : (isDark ? const Color(0xFF1E1E26) : Colors.black.withValues(alpha: 0.04)),
+                        ? AppTheme.electricPink.withOpacity(0.18)
+                        : (isDark ? AppTheme.darkCard : Colors.white),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? const Color(0xFFFFC72C) : Colors.transparent,
-                      width: 2.2,
+                      color: isSelected
+                          ? AppTheme.electricPink
+                          : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
+                      width: isSelected ? 2 : 1,
                     ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFFFFC72C).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
                   ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Text(emoji, style: const TextStyle(fontSize: 26)),
-                      ),
-                      if (isSelected)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 14,
-                            height: 14,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFC72C),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.check, size: 10, color: Color(0xFF1E1E26)),
-                          ),
-                        ),
-                    ],
+                  child: Center(
+                    child: Text(emoji, style: const TextStyle(fontSize: 24)),
                   ),
                 ),
               );
             }).toList(),
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
 
-          // Select From Given: Colors
           Text(
-            'SELECT COLOR',
-            style: GoogleFonts.outfit(
-              fontSize: 12,
+            'ACCENT COLOR',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
-              color: isDark ? Colors.white60 : Colors.black54,
+              color: const Color(0xFF8A90A6),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -546,12 +590,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isSelected ? Colors.white : Colors.transparent,
-                      width: 2.5,
+                      width: 3,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: col.withValues(alpha: isSelected ? 0.6 : 0.2),
-                        blurRadius: isSelected ? 8 : 4,
+                        color: col.withOpacity(isSelected ? 0.6 : 0.2),
+                        blurRadius: isSelected ? 10 : 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -566,92 +610,71 @@ class _AuthScreenState extends State<AuthScreen> {
             }).toList(),
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(height: 32),
 
-          // Custom Emoji Entry
+          // Primary Enter Button
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            width: double.infinity,
+            height: 56,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E26) : Colors.black.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.add_reaction_outlined, color: Color(0xFFFFB703), size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _customEmojiController,
-                    decoration: InputDecoration(
-                      hintText: 'Or type custom emoji (e.g. 🦁, 🍕)',
-                      hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (text) {
-                      final val = text.trim();
-                      if (val.isNotEmpty) {
-                        setState(() => _selectedAvatar = val);
-                      }
-                    },
-                  ),
+              gradient: const LinearGradient(
+                colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.electricPink.withOpacity(0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
-          ),
-
-          const SizedBox(height: 36),
-
-          // Action Buttons: BOTH SAME SIZE (Height 54px)
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: () => _completeRegistration(autoSelect: false),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC72C),
-                foregroundColor: const Color(0xFF1E1E26),
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: Text(
-                'Enter Doodle 🎨',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _completeRegistration(autoSelect: false),
+                borderRadius: BorderRadius.circular(20),
+                child: Center(
+                  child: Text(
+                    'Enter Doodle',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
 
           const SizedBox(height: 12),
 
-          // Auto-Select to Proceed Without Selecting (Same Size: 54px)
+          // Auto-select shortcut
           SizedBox(
             width: double.infinity,
             height: 54,
             child: OutlinedButton(
               onPressed: () => _completeRegistration(autoSelect: true),
               style: OutlinedButton.styleFrom(
-                foregroundColor: isDark ? Colors.white : const Color(0xFF1E1E26),
+                foregroundColor: isDark ? Colors.white : const Color(0xFF0E1017),
                 side: BorderSide(
-                  color: isDark ? Colors.white24 : Colors.grey.shade300,
-                  width: 1.5,
+                  color: isDark ? Colors.white12 : Colors.black12,
+                  width: 1.2,
                 ),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('⚡', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Auto-Select & Jump In',
-                    style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              child: Text(
+                'Auto-Select & Jump In',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
       ),
     );

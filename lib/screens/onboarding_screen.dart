@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../theme/app_theme.dart';
 import 'auth_screen.dart';
 
-/// Single-screen punchy onboarding introducing DoodleChat's core identity.
+/// Clean, high-end Gen-Z onboarding screen designed with iOS native aesthetics.
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   void _getStarted(BuildContext context) {
     HapticFeedback.mediumImpact();
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const AuthScreen()),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const AuthScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
     );
   }
 
@@ -19,198 +26,368 @@ class OnboardingScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF14141B) : const Color(0xFFFFFDF8),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            children: [
-              const Spacer(flex: 1),
-
-              // Hero Visual: Cute Duck App Icon with Glow
-              Center(
-                child: Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFC72C),
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFFC72C).withValues(alpha: 0.4),
-                        blurRadius: 28,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Ambient lighting
+          Positioned(
+            top: -100,
+            right: -60,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.electricPink.withOpacity(isDark ? 0.15 : 0.08),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.electricPink.withOpacity(isDark ? 0.25 : 0.12),
+                    blurRadius: 120,
+                    spreadRadius: 60,
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(child: Text('🦆', style: TextStyle(fontSize: 60))),
-                    ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 120,
+            left: -80,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.cyberViolet.withOpacity(isDark ? 0.14 : 0.08),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyberViolet.withOpacity(isDark ? 0.22 : 0.1),
+                    blurRadius: 120,
+                    spreadRadius: 50,
                   ),
-                ),
+                ],
               ),
+            ),
+          ),
 
-              const SizedBox(height: 24),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 12),
 
-              // Title & Slogan
-              Text(
-                'Doodle',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.gaegu(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Ephemeral Handwritten Doodles ✨',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFE5A800),
-                ),
-              ),
-
-              const Spacer(flex: 1),
-
-              // The 3 Pillars of DoodleChat in clean, visual cards
-              _buildFeatureCard(
-                isDark: isDark,
-                icon: '🎨',
-                title: 'Draw Live On Canvas',
-                description: 'No boring keyboards. Every message is a handwritten doodle or stamp.',
-                accentColor: const Color(0xFFFFC72C),
-              ),
-              const SizedBox(height: 12),
-              _buildFeatureCard(
-                isDark: isDark,
-                icon: '🧽',
-                title: 'Erase To Reply',
-                description: 'One doodle at a time. Your friend must erase it before replying.',
-                accentColor: const Color(0xFFFF4081),
-              ),
-              const SizedBox(height: 12),
-              _buildFeatureCard(
-                isDark: isDark,
-                icon: '🔒',
-                title: 'Zero Trail & Anti-Screenshot',
-                description: 'Screenshot-protected & completely ephemeral. Doodles vanish.',
-                accentColor: const Color(0xFF00B894),
-              ),
-
-              const Spacer(flex: 2),
-
-              // Bottom CTA Button — Uniform size 54px
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () => _getStarted(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFC72C),
-                    foregroundColor: const Color(0xFF1E1E26),
-                    elevation: 2,
-                    shadowColor: const Color(0xFFFFC72C).withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Minimalist Brand Ribbon Header
+                  Row(
                     children: [
-                      Text(
-                        'Get Started 🚀',
-                        style: GoogleFonts.outfit(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.electricPink, AppTheme.cyberViolet],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.gesture_rounded,
+                          color: Colors.white,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'doodle',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.6,
+                          color: isDark ? Colors.white : const Color(0xFF0E1017),
+                        ),
+                      ),
                     ],
+                  ).animate().fadeIn(duration: 400.ms),
+
+                  const Spacer(flex: 1),
+
+                  // Hero visual illustration card (Simulating an active ephemeral canvas exchange)
+                  Center(
+                    child: Container(
+                      width: double.infinity,
+                      height: 200,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkCard : Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.06),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.35 : 0.05),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          // Top bar inside card
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: AppTheme.electricPink.withOpacity(0.2),
+                                    child: const Text('✨', style: TextStyle(fontSize: 12)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '@alex • drawing now',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.electricPink,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.acidLime.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'Ephemeral',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.acidLime,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Simulated neon doodle stroke in card
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ShaderMask(
+                                  shaderCallback: (bounds) => const LinearGradient(
+                                    colors: [
+                                      AppTheme.electricPink,
+                                      AppTheme.cyberViolet,
+                                      AppTheme.neonYellow,
+                                    ],
+                                  ).createShader(bounds),
+                                  child: Text(
+                                    'Meet up tonight? ⚡️',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.5,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Erase completely to unlock your reply canvas',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? const Color(0xFF7A8098) : const Color(0xFF8C92A4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).animate().scale(delay: 150.ms, duration: 500.ms, curve: Curves.easeOutBack),
+
+                  const SizedBox(height: 32),
+
+                  // Headline
+                  Text(
+                    'Talk in strokes,\nnot keyboards.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      height: 1.12,
+                      letterSpacing: -1.0,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    ),
+                  ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.2, end: 0),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    'Express yourself with real-time handwritten doodles, stamps, and photos. No archives. No screenshots.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      height: 1.45,
+                      color: isDark ? const Color(0xFFA5ABC0) : const Color(0xFF5D6275),
+                    ),
+                  ).animate().fadeIn(delay: 350.ms),
+
+                  const Spacer(flex: 2),
+
+                  // Feature Pills
+                  _buildFeatureRow(
+                    isDark: isDark,
+                    icon: Icons.brush_rounded,
+                    accentColor: AppTheme.electricPink,
+                    title: 'Live Canvas Chat',
+                    subtitle: 'Spontaneous fingerstrokes, stickers, and sketches.',
+                  ).animate().fadeIn(delay: 450.ms).slideX(begin: 0.1, end: 0),
+
+                  const SizedBox(height: 14),
+
+                  _buildFeatureRow(
+                    isDark: isDark,
+                    icon: Icons.auto_fix_high_rounded,
+                    accentColor: AppTheme.cyberViolet,
+                    title: 'Erase to Reply',
+                    subtitle: 'Your friend rubs out your doodle before drawing back.',
+                  ).animate().fadeIn(delay: 550.ms).slideX(begin: 0.1, end: 0),
+
+                  const Spacer(flex: 2),
+
+                  // Bottom CTA Button — iOS 18-styled frosted gradient capsule
+                  Container(
+                    width: double.infinity,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          AppTheme.electricPink,
+                          Color(0xFFFF3B30),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.electricPink.withOpacity(0.35),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _getStarted(context),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Get Started',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 650.ms).slideY(begin: 0.2, end: 0),
+
+                  const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-            ],
+              );
+            },
           ),
         ),
+        ],
       ),
     );
   }
 
-  Widget _buildFeatureCard({
+  Widget _buildFeatureRow({
     required bool isDark,
-    required String icon,
-    required String title,
-    required String description,
+    required IconData icon,
     required Color accentColor,
+    required String title,
+    required String subtitle,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.28),
-          width: 1.5,
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: accentColor.withOpacity(isDark ? 0.18 : 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: accentColor.withOpacity(0.25),
+              width: 1,
+            ),
+          ),
+          child: Icon(icon, color: accentColor, size: 20),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(icon, style: const TextStyle(fontSize: 22)),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                  ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                  color: isDark ? Colors.white : const Color(0xFF0E1017),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: GoogleFonts.patrickHand(
-                    fontSize: 14,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: isDark ? const Color(0xFF8A90A6) : const Color(0xFF6B7280),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

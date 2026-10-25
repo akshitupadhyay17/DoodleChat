@@ -8,6 +8,7 @@ import '../services/chat_service.dart';
 import '../services/doodle_controller.dart';
 import '../widgets/doodle_canvas.dart';
 import '../widgets/doodle_avatar.dart';
+import '../theme/app_theme.dart';
 
 /// Standalone doodle creator: DoodleUp!
 /// Draw freely, load a photo (compulsory to doodle on it!), then hit "Select ➜"
@@ -27,18 +28,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   final TextEditingController _textCtrl = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  final List<Color> _colors = const [
-    Color(0xFFFFC72C), // Duck yellow
-    Color(0xFFFF4081), // Pink
-    Color(0xFF00CEC9), // Cyan
-    Color(0xFF55EFC4), // Mint
-    Color(0xFF6C5CE7), // Lavender
-    Color(0xFFFF7675), // Coral
-    Color(0xFFFFFFFF), // White
-    Color(0xFF2D3436), // Charcoal
-  ];
+  final List<Color> _colors = AppTheme.doodleColors;
 
-  final List<String> _quickEmojis = ['🦆', '❤️', '🔥', '✨', '🌸', '⚡️', '😂', '👑', '🎉', '👋'];
+  final List<String> _quickEmojis = ['⚡️', '🔥', '✨', '💖', '🌸', '😂', '👑', '🎉', '👋', '🖤', '🚀', '💯'];
 
   @override
   void initState() {
@@ -145,9 +137,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
-                  Text(selectedEmoji, style: const TextStyle(fontSize: 26)),
+                  Text(selectedEmoji, style: const TextStyle(fontSize: 24)),
                   const SizedBox(width: 8),
-                  Text('New Doodle Group', style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold)),
+                  Text('New Doodle Group', style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
                 ],
               ),
               content: SingleChildScrollView(
@@ -542,16 +534,16 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'My DoodleUp Story',
-                                          style: GoogleFonts.outfit(
+                                          'My Story',
+                                          style: GoogleFonts.plusJakartaSans(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark ? Colors.white : const Color(0xFF0E1017),
                                           ),
                                         ),
                                         Text(
-                                          'Appears as a status ring around your avatar ⭕️',
-                                          style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                                          'Shared to your story ring for 24h',
+                                          style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF8A90A6)),
                                         ),
                                       ],
                                     ),
@@ -1005,8 +997,8 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Choose Emoji Stamp', style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold)),
-                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                    Text('Stamps & Stickers', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -1052,7 +1044,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       builder: (ctx) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Add Text Doodle', style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold)),
+          title: Text('Add Text', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800)),
           content: TextField(
             controller: _textCtrl,
             autofocus: true,
@@ -1072,10 +1064,11 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC72C),
-                foregroundColor: Colors.black,
+                backgroundColor: AppTheme.electricPink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Add Text'),
+              child: Text('Add Text', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
             ),
           ],
         );
@@ -1093,29 +1086,30 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar: Back, Title "DoodleUp", Clear, and "Select ➜"
+            // Top Bar: Back, Title "studio", Clear, and "Send ➜"
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : const Color(0xFF1E1E26)),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: isDark ? Colors.white : const Color(0xFF0E1017)),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 4),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFFFFC72C), Color(0xFFFF6B35)]),
-                          borderRadius: BorderRadius.circular(8),
+                          gradient: const LinearGradient(colors: [AppTheme.electricPink, AppTheme.cyberViolet]),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          'DoodleUp',
-                          style: GoogleFonts.gaegu(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                          'canvas',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
                             color: Colors.white,
                           ),
                         ),
@@ -1124,7 +1118,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.grey),
+                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFF8A90A6)),
                     tooltip: 'Clear canvas',
                     onPressed: () {
                       _doodle.clear();
@@ -1132,19 +1126,34 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                     },
                   ),
                   const SizedBox(width: 6),
-                  ElevatedButton.icon(
-                    onPressed: _onSendTapped,
-                    icon: const Icon(Icons.send_rounded, size: 16),
-                    label: Text(
-                      'Send',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.electricPink.withOpacity(0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFC72C),
-                      foregroundColor: const Color(0xFF1E1E26),
-                      elevation: 2,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    child: ElevatedButton.icon(
+                      onPressed: _onSendTapped,
+                      icon: const Icon(Icons.send_rounded, size: 14),
+                      label: Text(
+                        'Send',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                     ),
                   ),
                 ],

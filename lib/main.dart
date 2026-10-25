@@ -20,9 +20,8 @@ Future<void> main() async {
   // Preload fonts so first paint never janks; never block startup for long.
   try {
     await GoogleFonts.pendingFonts([
+      GoogleFonts.plusJakartaSans(),
       GoogleFonts.outfit(),
-      GoogleFonts.patrickHand(),
-      GoogleFonts.gaegu(),
       GoogleFonts.caveat(),
     ]).timeout(const Duration(seconds: 3));
   } catch (_) {}

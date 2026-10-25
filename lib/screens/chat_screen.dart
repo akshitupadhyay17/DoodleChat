@@ -40,7 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _iAmDrawing = false;
 
   final List<String> _emojiDoodles = [
-    '🐥', '🦆', '💖', '🔥', '✨', '⭐', '🥰', '🐾', '🌈', '🎉'
+    '⚡️', '🔥', '✨', '💖', '⭐', '🥰', '🌸', '🌈', '🎉', '💯'
   ];
 
   ChatContact get _contact => widget.contact;
@@ -267,11 +267,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final categories = <String, List<String>>{
-      '🦆 Duck & Pals': ['🐥', '🦆', '🐤', '🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐸', '🦄', '🐾', '🐝', '🐙', '🦋'],
-      '✨ Sparks & Magic': ['✨', '⭐', '🌟', '💫', '🔥', '💥', '⚡️', '🌈', '☀️', '🌙', '🪐', '☁️', '❄️', '🌸', '🍀'],
-      '💖 Hearts & Moods': ['🥰', '😍', '💖', '❤️', '💕', '💘', '💛', '😎', '🤪', '🥳', '🤩', '🥺', '😂', '🤤', '😇'],
-      '🎨 Creative & Fun': ['🎨', '🖌️', '✏️', '🖍️', '💌', '🎈', '🎉', '🪄', '🎯', '🚀', '💎', '🍕', '🍦', '🍩', '☕'],
-      '👍 Hands & Vibes': ['✌️', '👍', '👏', '🙌', '🤝', '👋', '🤘', '🤙', '👀', '💯', '💬', '💭', '💡', '🎵', '👑'],
+      '⚡️ Vibes & Energy': ['⚡️', '🔥', '✨', '⭐', '🌟', '💫', '💥', '🌈', '☀️', '🌙', '🪐', '☁️', '❄️', '🌸', '🍀'],
+      '💖 Moods & Reactions': ['🥰', '😍', '💖', '❤️', '💕', '💘', '💛', '😎', '🤪', '🥳', '🤩', '🥺', '😂', '🤤', '😇'],
+      '🎨 Creative & Play': ['🎨', '🖌️', '✏️', '🖍️', '💌', '🎈', '🎉', '🪄', '🎯', '🚀', '💎', '🍕', '🍦', '🍩', '☕'],
+      '👍 Gestures & Signs': ['✌️', '👍', '👏', '🙌', '🤝', '👋', '🤘', '🤙', '👀', '💯', '💬', '💭', '💡', '🎵', '👑'],
+      '🐾 Creatures': ['🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐸', '🦄', '🐾', '🐝', '🐙', '🦋', '🐥', '🦁', '🐯'],
     };
 
     showModalBottomSheet(
@@ -319,10 +319,11 @@ class _ChatScreenState extends State<ChatScreen> {
                             const Text('🎨', style: TextStyle(fontSize: 22)),
                             const SizedBox(width: 8),
                             Text(
-                              'Doodle Emoji Stamps',
-                              style: GoogleFonts.gaegu(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                              'Stickers & Stamps',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
                               ),
                             ),
                           ],
@@ -913,14 +914,14 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFC72C).withValues(alpha: 0.4),
+              color: AppTheme.electricPink.withOpacity(0.18),
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: Text('🦆', style: TextStyle(fontSize: 20)),
+              child: Icon(Icons.person_pin_circle_rounded, color: AppTheme.electricPink, size: 20),
             ),
           ),
           const SizedBox(width: 12),
@@ -930,15 +931,14 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Text(
                   '${_contact.name} sent a Doodle Request!',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2D3436),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
-                  'Accept to allow exchanging private doodles.',
-                  style: GoogleFonts.patrickHand(fontSize: 13, color: Colors.black87),
+                  'Accept to unlock peer-to-peer doodle exchange.',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
                 ),
               ],
             ),
@@ -955,9 +955,9 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: const Size(60, 34),
               side: BorderSide(color: Colors.grey.shade400),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('Decline', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade700)),
+            child: Text('Decline', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade700)),
           ),
           const SizedBox(width: 6),
           ElevatedButton(
@@ -966,18 +966,18 @@ class _ChatScreenState extends State<ChatScreen> {
               HapticFeedback.heavyImpact();
               _confetti.play();
               _doodle.locked = false;
-              _toast('Request accepted! Canvas unlocked 🎨', const Color(0xFF00B894));
+              _toast('Request accepted! Canvas unlocked ✨', AppTheme.acidLime);
               setState(() {});
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFC72C),
-              foregroundColor: const Color(0xFF1E1E26),
+              backgroundColor: AppTheme.electricPink,
+              foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               minimumSize: const Size(70, 34),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('Accept 🦆', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold)),
+            child: Text('Accept', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1023,7 +1023,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 Text(
                   'Waiting for @${_contact.username} to accept before sending doodles.',
-                  style: GoogleFonts.patrickHand(fontSize: 13, color: Colors.black87),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
                 ),
               ],
             ),
@@ -1073,8 +1073,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 Text(
-                  'Erase it completely with your finger to reply 🪄',
-                  style: GoogleFonts.patrickHand(fontSize: 14, color: Colors.black87),
+                  'Erase it completely with your finger to reply ✨',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
                 ),
                 const SizedBox(height: 5),
                 ValueListenableBuilder<double>(

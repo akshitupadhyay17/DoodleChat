@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/doodle_stroke.dart';
+import '../theme/app_theme.dart';
 import 'story_viewer_sheet.dart';
 
 class DoodleAvatar extends StatelessWidget {
@@ -35,6 +36,7 @@ class DoodleAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarSize = radius * 2;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Widget avatarInner = Container(
       width: avatarSize,
@@ -42,7 +44,10 @@ class DoodleAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: hasStory ? 1.5 : 2),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBackground : Colors.white,
+          width: hasStory ? 1.5 : 2,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: photoBase64 != null && photoBase64!.isNotEmpty
@@ -75,23 +80,23 @@ class DoodleAvatar extends StatelessWidget {
           );
         },
         child: Container(
-          padding: const EdgeInsets.all(3.0),
+          padding: const EdgeInsets.all(2.5),
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             gradient: SweepGradient(
               colors: [
-                Color(0xFFFFC72C),
-                Color(0xFFFF4081),
-                Color(0xFF6C5CE7),
-                Color(0xFF00CEC9),
-                Color(0xFFFFC72C),
+                AppTheme.electricPink,
+                AppTheme.cyberViolet,
+                AppTheme.electricCyan,
+                AppTheme.neonYellow,
+                AppTheme.electricPink,
               ],
             ),
           ),
           child: Container(
             padding: const EdgeInsets.all(2.0),
             decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
+              color: isDark ? AppTheme.darkBackground : Colors.white,
               shape: BoxShape.circle,
             ),
             child: avatarInner,
@@ -108,18 +113,22 @@ class DoodleAvatar extends StatelessWidget {
     if (!isOnline) return avatarWithRing;
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         avatarWithRing,
         Positioned(
           right: 0,
           bottom: 0,
           child: Container(
-            width: radius * 0.55,
-            height: radius * 0.55,
+            width: radius * 0.52,
+            height: radius * 0.52,
             decoration: BoxDecoration(
-              color: const Color(0xFF00B894),
+              color: AppTheme.acidLime,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(
+                color: isDark ? AppTheme.darkBackground : Colors.white,
+                width: 2,
+              ),
             ),
           ),
         ),

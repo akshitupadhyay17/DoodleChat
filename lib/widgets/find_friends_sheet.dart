@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/chat_contact.dart';
 import '../screens/chat_screen.dart';
 import '../services/chat_service.dart';
+import '../theme/app_theme.dart';
 
 /// "Find & connect friends": live online list, @handle / link entry and a real QR scanner.
 Future<void> showFindFriendsSheet(BuildContext context) {
@@ -55,7 +56,7 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
     if (handle.isEmpty) return;
     final service = ChatService();
     if (handle == service.currentUser.username.toLowerCase()) {
-      setState(() => _error = "That's you! 🦆 Share your QR with a friend instead.");
+      setState(() => _error = "That's your handle! Share your QR code with a friend instead.");
       return;
     }
     setState(() {
@@ -98,8 +99,11 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
     nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Doodle request sent to @$handle! ⏳'),
-        backgroundColor: const Color(0xFFFFC72C),
+        content: Text(
+          'Doodle request sent to @$handle!',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: AppTheme.electricPink,
       ),
     );
   }
@@ -140,7 +144,7 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                     width: 42,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.4),
+                      color: Colors.grey.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -150,35 +154,52 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Find & Connect Friends 🦆',
-                      style: GoogleFonts.gaegu(fontSize: 28, fontWeight: FontWeight.bold),
+                      'Add Friends',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
+                      ),
                     ),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-                // QR scanner
+                // QR scanner button
                 InkWell(
                   onTap: _scan,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(20),
                   child: Ink(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFFFC72C), Color(0xFFFF9F1C)]),
-                      borderRadius: BorderRadius.circular(18),
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.electricPink, Color(0xFFFF5E3A)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.electricPink.withOpacity(0.3),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF1E1E26)),
+                        const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 22),
                         const SizedBox(width: 10),
                         Text(
-                          'Scan a friend\'s QR code',
-                          style: GoogleFonts.outfit(
+                          'Scan Friend\'s QR Code',
+                          style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: const Color(0xFF1E1E26),
+                            fontSize: 15,
+                            color: Colors.white,
                           ),
                         ),
                       ],
@@ -186,14 +207,14 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                   ),
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 Text(
-                  'OR ENTER @USERNAME / LINK',
-                  style: GoogleFonts.outfit(
+                  'OR ENTER @USERNAME',
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.1,
-                    color: Colors.grey,
+                    color: const Color(0xFF8A90A6),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -205,13 +226,15 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                         autocorrect: false,
                         textInputAction: TextInputAction.go,
                         onSubmitted: _connectHandle,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFFFFC72C)),
-                          hintText: 'friend_handle',
+                          prefixIcon: const Icon(Icons.alternate_email_rounded, color: AppTheme.electricPink, size: 20),
+                          hintText: 'username',
+                          hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8A90A6)),
                           filled: true,
-                          fillColor: isDark ? const Color(0xFF1A1A22) : Colors.black.withValues(alpha: 0.04),
+                          fillColor: isDark ? AppTheme.darkSurface : const Color(0xFFF3F4F8),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -219,22 +242,32 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    SizedBox(
+                    Container(
                       height: 50,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: ElevatedButton(
                         onPressed: _busy ? null : () => _connectHandle(_ctrl.text),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFC72C),
-                          foregroundColor: const Color(0xFF1E1E26),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         child: _busy
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFF1E1E26)),
+                                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                               )
-                            : const Text('Connect', style: TextStyle(fontWeight: FontWeight.bold)),
+                            : Text(
+                                'Connect',
+                                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                              ),
                       ),
                     ),
                   ],
@@ -244,7 +277,7 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       _error!,
-                      style: GoogleFonts.outfit(color: const Color(0xFFFF4081), fontWeight: FontWeight.w600),
+                      style: GoogleFonts.plusJakartaSans(color: AppTheme.electricPink, fontWeight: FontWeight.w600, fontSize: 13),
                     ).animate().fadeIn().shakeX(hz: 4, amount: 4),
                   ),
 
@@ -252,10 +285,10 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                 Row(
                   children: [
                     Container(
-                      width: 9,
-                      height: 9,
+                      width: 8,
+                      height: 8,
                       decoration: BoxDecoration(
-                        color: service.isConnected ? const Color(0xFF00B894) : Colors.orange,
+                        color: service.isConnected ? AppTheme.acidLime : Colors.orange,
                         shape: BoxShape.circle,
                       ),
                     )
@@ -264,13 +297,13 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                     const SizedBox(width: 8),
                     Text(
                       service.isConnected
-                          ? 'LIVE ONLINE NOW (${peers.length})'
-                          : 'CONNECTING TO SERVER…',
-                      style: GoogleFonts.outfit(
+                          ? 'ONLINE NOW (${peers.length})'
+                          : 'CONNECTING…',
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.1,
-                        color: Colors.grey,
+                        color: const Color(0xFF8A90A6),
                       ),
                     ),
                   ],
@@ -280,17 +313,17 @@ class _FindFriendsSheetState extends State<_FindFriendsSheet> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: isDark ? AppTheme.darkSurface : const Color(0xFFF3F4F8),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       children: [
-                        const Text('📱', style: TextStyle(fontSize: 24)),
+                        const Icon(Icons.bolt_rounded, color: AppTheme.neonYellow, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Nobody else is online yet. Ask your friend to open the link and pick a username — they\'ll pop up here instantly.',
-                            style: GoogleFonts.patrickHand(fontSize: 16),
+                            'No one else is online right now. Share your handle with friends so they appear here.',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF8A90A6)),
                           ),
                         ),
                       ],
@@ -319,29 +352,41 @@ class _PeerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = peer['username'].toString();
-    final emoji = peer['avatarEmoji']?.toString() ?? '🎨';
+    final emoji = peer['avatarEmoji']?.toString() ?? '✨';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.035),
+        color: isDark ? AppTheme.darkCard : const Color(0xFFF3F4F8),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+        ),
       ),
       child: ListTile(
         leading: Container(
-          width: 44,
-          height: 44,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFC72C).withValues(alpha: 0.25),
+            color: AppTheme.electricPink.withOpacity(0.18),
             shape: BoxShape.circle,
           ),
-          child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
+          child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
         ),
-        title: Text('@$user', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(
+          '@$user',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: isDark ? Colors.white : const Color(0xFF0E1017),
+          ),
+        ),
         subtitle: Text(
           peer['bio']?.toString() ?? '',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.patrickHand(fontSize: 15),
+          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
         ),
         trailing: Builder(
           builder: (context) {
@@ -354,56 +399,70 @@ class _PeerTile extends StatelessWidget {
             final isPending = existing != null && existing.friendshipStatus == FriendshipStatus.requestSent;
             final isReceived = existing != null && existing.friendshipStatus == FriendshipStatus.requestReceived;
 
-            String label = 'Request 🦆';
-            Color bg = const Color(0xFFFFC72C);
+            String label = 'Connect';
+            Color bg = AppTheme.electricPink;
             if (isAccepted) {
-              label = 'Chat ➔';
+              label = 'Chat';
             } else if (isReceived) {
-              label = 'Accept 🦆';
-              bg = const Color(0xFF00B894);
+              label = 'Accept';
+              bg = AppTheme.acidLime;
             } else if (isPending) {
-              label = 'Pending ⏳';
-              bg = const Color(0xFF6C5CE7);
+              label = 'Pending';
+              bg = AppTheme.cyberViolet;
             }
 
-            return ElevatedButton(
-              onPressed: () async {
-                final nav = Navigator.of(context);
-                final messenger = ScaffoldMessenger.of(context);
-                if (isAccepted) {
-                  nav.pop();
-                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
-                } else if (isReceived) {
-                  service.respondFriendRequest(user, true);
-                  nav.pop();
-                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
-                } else if (isPending) {
-                  nav.pop();
-                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
-                } else {
-                  await service.sendFriendRequest(user, profile: peer);
-                  final contact = await service.ensureContact(
-                    user,
-                    profile: peer,
-                    initialStatus: FriendshipStatus.requestSent,
-                  );
-                  nav.pop();
-                  nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Doodle request sent to @$user! ⏳'),
-                      backgroundColor: const Color(0xFFFFC72C),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: bg,
-                foregroundColor: (isReceived || isPending) ? Colors.white : const Color(0xFF1E1E26),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            return Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: ElevatedButton(
+                onPressed: () async {
+                  final nav = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(context);
+                  if (isAccepted) {
+                    nav.pop();
+                    nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+                  } else if (isReceived) {
+                    service.respondFriendRequest(user, true);
+                    nav.pop();
+                    nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+                  } else if (isPending) {
+                    nav.pop();
+                    nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+                  } else {
+                    await service.sendFriendRequest(user, profile: peer);
+                    final contact = await service.ensureContact(
+                      user,
+                      profile: peer,
+                      initialStatus: FriendshipStatus.requestSent,
+                    );
+                    nav.pop();
+                    nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Doodle request sent to @$user!',
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                        ),
+                        backgroundColor: AppTheme.electricPink,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+              ),
             );
           },
         ),
@@ -439,7 +498,10 @@ class _QrScanPageState extends State<_QrScanPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text('Scan QR', style: GoogleFonts.gaegu(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(
+          'Scan QR Code',
+          style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+        ),
       ),
       body: Stack(
         fit: StackFit.expand,
@@ -461,9 +523,9 @@ class _QrScanPageState extends State<_QrScanPage> {
               child: Padding(
                 padding: const EdgeInsets.all(28),
                 child: Text(
-                  'Camera unavailable.\nAllow camera access (needs https), or type your friend\'s @username instead.',
+                  'Camera unavailable.\nAllow camera access or enter handle manually.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(color: Colors.white70, fontSize: 16),
+                  style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 15),
                 ),
               ),
             ),
@@ -473,7 +535,7 @@ class _QrScanPageState extends State<_QrScanPage> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFFFC72C), width: 4),
+                border: Border.all(color: AppTheme.electricPink, width: 3.5),
                 borderRadius: BorderRadius.circular(28),
               ),
             )
@@ -485,9 +547,9 @@ class _QrScanPageState extends State<_QrScanPage> {
             left: 0,
             right: 0,
             child: Text(
-              'Point at your friend\'s Doodle QR 🦆',
+              'Align QR code within the frame',
               textAlign: TextAlign.center,
-              style: GoogleFonts.patrickHand(color: Colors.white, fontSize: 20),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
         ],

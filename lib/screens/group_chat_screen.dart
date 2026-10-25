@@ -5,6 +5,7 @@ import '../models/doodle_group.dart';
 import '../services/chat_service.dart';
 import '../services/doodle_controller.dart';
 import '../widgets/doodle_canvas.dart';
+import '../theme/app_theme.dart';
 import 'create_doodle_screen.dart';
 
 class GroupChatScreen extends StatefulWidget {
@@ -69,7 +70,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Add to ${widget.group.name}', style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text('Add to ${widget.group.name}', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800)),
                     IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
@@ -222,7 +223,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                               const SizedBox(height: 12),
                               Text(
                                 'Group Canvas is Empty',
-                                style: GoogleFonts.gaegu(fontSize: 24, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: 6),
                               Text(
@@ -256,8 +257,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFC72C),
-                  foregroundColor: const Color(0xFF1E1E26),
+                  backgroundColor: AppTheme.electricPink,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 2,
                 ),
@@ -267,8 +268,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     const Icon(Icons.brush_rounded, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Doodle in ${group.name} 🎨',
-                      style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                      'Doodle in ${group.name}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
