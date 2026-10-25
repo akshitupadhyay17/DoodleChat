@@ -21,7 +21,12 @@ class DoodleCanvas extends StatefulWidget {
 }
 
 class _DoodleCanvasState extends State<DoodleCanvas> {
-  int? _pointer;
+  int? _drawingPointer;
+  final Map<int, Offset> _activePointers = {};
+  double? _lastPinchDist;
+  Offset? _lastFocalPoint;
+  bool _isTwoFingerGesture = false;
+  double _overlayScaleStart = 1.0;
 
   @override
   Widget build(BuildContext context) {
@@ -33,23 +38,85 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
         return Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (e) {
-            if (_pointer != null) return;
-            _pointer = e.pointer;
-            c.pointerDown(e.localPosition);
+            _activePointers[e.pointer] = e.localPosition;
+            if (_activePointers.length >= 2) {
+              // Two or more fingers detected -> activate 2-finger scale/pan mode!
+              _isTwoFingerGesture = true;
+              _drawingPointer = null;
+              c.cancelLiveStroke();
+
+              final pts = _activePointers.values.toList();
+              final p1 = pts[0];
+              final p2 = pts[1];
+              _lastPinchDist = (p1 - p2).distance;
+              _lastFocalPoint = (p1 + p2) / 2;
+
+              if (c.selection == null) {
+                final mid = _lastFocalPoint!;
+                if (!c.hitTestSelect(mid / scale)) {
+                  if (!c.hitTestSelect(p1 / scale)) {
+                    c.hitTestSelect(p2 / scale);
+                  }
+                }
+              }
+            } else if (_activePointers.length == 1) {
+              _isTwoFingerGesture = false;
+              _drawingPointer = e.pointer;
+              c.pointerDown(e.localPosition);
+            }
           },
           onPointerMove: (e) {
-            if (e.pointer != _pointer) return;
-            c.pointerMove(e.localPosition);
+            _activePointers[e.pointer] = e.localPosition;
+            if (_isTwoFingerGesture && _activePointers.length >= 2) {
+              final pts = _activePointers.values.toList();
+              final p1 = pts[0];
+              final p2 = pts[1];
+              final curDist = (p1 - p2).distance;
+              final curFocal = (p1 + p2) / 2;
+
+              if (_lastPinchDist != null && _lastPinchDist! > 1.0 && curDist > 1.0) {
+                final factor = (curDist / _lastPinchDist!).clamp(0.65, 1.6);
+                c.scaleSelected(factor);
+              }
+              if (_lastFocalPoint != null) {
+                final delta = (curFocal - _lastFocalPoint!) / scale;
+                c.moveSelected(delta);
+              }
+              _lastPinchDist = curDist;
+              _lastFocalPoint = curFocal;
+            } else if (!_isTwoFingerGesture && e.pointer == _drawingPointer) {
+              c.pointerMove(e.localPosition);
+            }
           },
           onPointerUp: (e) {
-            if (e.pointer != _pointer) return;
-            _pointer = null;
-            c.pointerUp();
+            _activePointers.remove(e.pointer);
+            if (_activePointers.length < 2) {
+              _isTwoFingerGesture = false;
+              _lastPinchDist = null;
+              _lastFocalPoint = null;
+            }
+            if (_activePointers.isEmpty) {
+              if (_drawingPointer != null && e.pointer == _drawingPointer) {
+                _drawingPointer = null;
+                c.pointerUp();
+              }
+              _drawingPointer = null;
+            }
           },
           onPointerCancel: (e) {
-            if (e.pointer != _pointer) return;
-            _pointer = null;
-            c.pointerUp();
+            _activePointers.remove(e.pointer);
+            if (_activePointers.length < 2) {
+              _isTwoFingerGesture = false;
+              _lastPinchDist = null;
+              _lastFocalPoint = null;
+            }
+            if (_activePointers.isEmpty) {
+              if (_drawingPointer != null && e.pointer == _drawingPointer) {
+                _drawingPointer = null;
+                c.pointerUp();
+              }
+              _drawingPointer = null;
+            }
           },
           child: Stack(
             fit: StackFit.expand,
@@ -112,12 +179,29 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Move GestureDetector (dragging anywhere inside moves the element)
+                        // Move & Two-Finger Pinch Resize GestureDetector
                         Positioned.fill(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onPanUpdate: (details) {
-                              c.moveSelected(details.delta / scale);
+                            onScaleStart: (details) {
+                              _overlayScaleStart = 1.0;
+                            },
+                            onScaleUpdate: (details) {
+                              if (details.pointerCount > 1) {
+                                // Two fingers inside selection -> scale resize!
+                                if (_overlayScaleStart > 0) {
+                                  final factor = (details.scale / _overlayScaleStart).clamp(0.65, 1.6);
+                                  c.scaleSelected(factor);
+                                }
+                                _overlayScaleStart = details.scale;
+                                c.moveSelected(details.focalPointDelta / scale);
+                              } else {
+                                // Single finger drag to move
+                                c.moveSelected(details.focalPointDelta / scale);
+                              }
+                            },
+                            onScaleEnd: (details) {
+                              _overlayScaleStart = 1.0;
                             },
                             child: Container(
                               decoration: BoxDecoration(

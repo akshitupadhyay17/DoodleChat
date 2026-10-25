@@ -94,21 +94,21 @@ class DoodleSelection {
     switch (type) {
       case SelectedElementType.text:
         if (text != null) {
-          final next = (text!.fontSize * factor).clamp(32.0, 180.0);
+          final next = (text!.fontSize * factor).clamp(18.0, 360.0);
           text!.fontSize = next;
           text!.invalidate();
         }
         break;
       case SelectedElementType.emoji:
         if (emoji != null) {
-          final next = (emoji!.size * factor).clamp(40.0, 240.0);
+          final next = (emoji!.size * factor).clamp(24.0, 480.0);
           emoji!.size = next;
           emoji!.invalidate();
         }
         break;
       case SelectedElementType.shape:
         if (shape != null) {
-          final next = (shape!.radius * factor).clamp(40.0, 400.0);
+          final next = (shape!.radius * factor).clamp(20.0, 600.0);
           shape!.radius = next;
         }
         break;
@@ -450,19 +450,19 @@ class DoodleController extends ChangeNotifier {
 
   bool hitTestSelect(Offset v) {
     for (int i = shapes.length - 1; i >= 0; i--) {
-      if (shapes[i].rect.contains(v)) {
+      if (shapes[i].rect.inflate(24).contains(v)) {
         selectShape(shapes[i]);
         return true;
       }
     }
     for (int i = emojis.length - 1; i >= 0; i--) {
-      if (emojis[i].rect.contains(v)) {
+      if (emojis[i].rect.inflate(24).contains(v)) {
         selectEmoji(emojis[i]);
         return true;
       }
     }
     for (int i = texts.length - 1; i >= 0; i--) {
-      if (texts[i].rect.contains(v)) {
+      if (texts[i].rect.inflate(24).contains(v)) {
         selectText(texts[i]);
         return true;
       }
@@ -661,6 +661,13 @@ class DoodleController extends ChangeNotifier {
         live.bump();
       }
     }
+  }
+
+  void cancelLiveStroke() {
+    _ignorePointerUntilUp = true;
+    _live.clear();
+    eraserPos = null;
+    live.bump();
   }
 
   void pointerUp() {
