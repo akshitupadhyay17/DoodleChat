@@ -20,7 +20,10 @@ import '../widgets/cartoon_emoji_renderer.dart';
 class ChatScreen extends StatefulWidget {
   final ChatContact contact;
 
-  const ChatScreen({super.key, required this.contact});
+  /// When set, the chat opens as a reply to this friend's DoodleUp.
+  final DoodleData? replyToStory;
+
+  const ChatScreen({super.key, required this.contact, this.replyToStory});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -36,6 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String? _loadedDoodleId;
   bool _isRecordingVoice = false;
+  bool _showReplyBanner = true;
   String _selectedDoodleFont = 'PatrickHand';
 
   Timer? _drawingTimer;
@@ -630,6 +634,44 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   // Top Bar (From Sketch: Profile at top left, three dots at right)
                   _buildTopBar(context, isDark),
+
+                  // Replying-to-DoodleUp banner
+                  if (widget.replyToStory != null && _showReplyBanner && !isBlocked && !isMustErase)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.electricPink.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border(
+                          left: BorderSide(color: AppTheme.electricPink, width: 4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.reply_rounded, size: 18, color: AppTheme.electricPink),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Replying to ${_contact.name}\'s DoodleUp 🎨 — draw your reply below',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : const Color(0xFF0E1017),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () => setState(() => _showReplyBanner = false),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // Status / Mechanic Banner (animated in/out)
                   AnimatedSize(

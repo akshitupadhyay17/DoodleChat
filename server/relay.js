@@ -141,7 +141,8 @@ const server = http.createServer((req, res) => {
   const headers = {
     'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
     'Access-Control-Allow-Origin': '*',
-    'Cache-Control': NO_CACHE.has(base) ? 'no-cache' : 'public, max-age=3600',
+    // Always revalidate: tree-shaken icon fonts change per build and stale copies hide new icons.
+    'Cache-Control': 'no-cache',
   };
 
   fs.readFile(filePath, (err, content) => {

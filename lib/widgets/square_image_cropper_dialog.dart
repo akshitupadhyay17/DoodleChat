@@ -296,9 +296,12 @@ class _SquareImageCropperDialogState extends State<SquareImageCropperDialog> {
                                     color: const Color(0xFF14141E),
                                     child: InteractiveViewer(
                                       transformationController: _transformCtrl,
+                                      // Let the image keep its natural size instead of being
+                                      // force-fitted (and thereby cropped) into the 280px box.
+                                      constrained: false,
                                       minScale: 0.1,
                                       maxScale: 8.0,
-                                      boundaryMargin: const EdgeInsets.all(400),
+                                      boundaryMargin: const EdgeInsets.all(2000),
                                       child: RotatedBox(
                                         quarterTurns: _rotationQuarterTurns,
                                         child: RawImage(

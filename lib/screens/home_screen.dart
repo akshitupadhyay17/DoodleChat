@@ -731,7 +731,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   onReply: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)),
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(contact: contact, replyToStory: contact.activeStory),
+                      ),
                     );
                   },
                 );
@@ -1224,7 +1226,9 @@ class _HomeScreenState extends State<HomeScreen> {
           onStoryReply: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)),
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(contact: contact, replyToStory: contact.activeStory),
+              ),
             );
           },
         ),
