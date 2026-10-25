@@ -12,6 +12,7 @@ import 'chat_screen.dart';
 import 'create_doodle_screen.dart';
 import 'group_chat_screen.dart';
 import 'profile_screen.dart';
+import '../widgets/doodle_pass_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -267,9 +268,21 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       body: SafeArea(
-        child: isProfileTab
-            ? const ProfileScreen()
-            : Column(
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragEnd: (details) {
+            if (details.primaryVelocity == null) return;
+            if (details.primaryVelocity! < -260 && _currentTabIndex == 0) {
+              HapticFeedback.lightImpact();
+              setState(() => _currentTabIndex = 1);
+            } else if (details.primaryVelocity! > 260 && _currentTabIndex == 1) {
+              HapticFeedback.lightImpact();
+              setState(() => _currentTabIndex = 0);
+            }
+          },
+          child: isProfileTab
+              ? ProfileScreen(onBackToChats: () => setState(() => _currentTabIndex = 0))
+              : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Sleek Top App Bar (Instagram/Snapchat style)
@@ -479,6 +492,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+        ),
       ),
 
       // Premium Frosted Glass Bottom Navigation Bar
@@ -875,7 +889,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.qr_code_rounded, color: AppTheme.electricPink, size: 22),
             tooltip: 'My QR Code',
-            onPressed: () => setState(() => _currentTabIndex = 1),
+            onPressed: () => showDoodlePassDialog(context),
           ),
         ],
       ),

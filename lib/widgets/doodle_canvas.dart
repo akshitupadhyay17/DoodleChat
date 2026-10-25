@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/doodle_stroke.dart';
 import '../services/doodle_controller.dart';
 import 'cartoon_emoji_renderer.dart';
@@ -27,6 +28,8 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
   Offset? _lastFocalPoint;
   bool _isTwoFingerGesture = false;
   double _overlayScaleStart = 1.0;
+  Offset? _singlePointerStart;
+  bool _isEdgeSwipeBack = false;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +65,8 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
             } else if (_activePointers.length == 1) {
               _isTwoFingerGesture = false;
               _drawingPointer = e.pointer;
+              _singlePointerStart = e.localPosition;
+              _isEdgeSwipeBack = false;
               c.pointerDown(e.localPosition);
             }
           },
@@ -85,7 +90,23 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
               _lastPinchDist = curDist;
               _lastFocalPoint = curFocal;
             } else if (!_isTwoFingerGesture && e.pointer == _drawingPointer) {
-              c.pointerMove(e.localPosition);
+              // Edge swipe back detection: started within 34px of left edge/corner
+              if (_singlePointerStart != null && _singlePointerStart!.dx <= 34.0 && !_isEdgeSwipeBack) {
+                final dx = e.localPosition.dx - _singlePointerStart!.dx;
+                final dy = (e.localPosition.dy - _singlePointerStart!.dy).abs();
+                if (dx >= 42.0 && dx > dy * 1.25) {
+                  _isEdgeSwipeBack = true;
+                  _drawingPointer = null;
+                  _singlePointerStart = null;
+                  c.cancelLiveStroke();
+                  HapticFeedback.lightImpact();
+                  Navigator.maybePop(context);
+                  return;
+                }
+              }
+              if (!_isEdgeSwipeBack) {
+                c.pointerMove(e.localPosition);
+              }
             }
           },
           onPointerUp: (e) {
@@ -96,6 +117,8 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
               _lastFocalPoint = null;
             }
             if (_activePointers.isEmpty) {
+              _singlePointerStart = null;
+              _isEdgeSwipeBack = false;
               if (_drawingPointer != null && e.pointer == _drawingPointer) {
                 _drawingPointer = null;
                 c.pointerUp();
@@ -111,6 +134,8 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
               _lastFocalPoint = null;
             }
             if (_activePointers.isEmpty) {
+              _singlePointerStart = null;
+              _isEdgeSwipeBack = false;
               if (_drawingPointer != null && e.pointer == _drawingPointer) {
                 _drawingPointer = null;
                 c.pointerUp();

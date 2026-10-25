@@ -253,6 +253,20 @@ class _StoryViewerSheetState extends State<StoryViewerSheet> with SingleTickerPr
                 onTapDown: (_) => _onHoldStart(),
                 onTapUp: (_) => _onHoldEnd(),
                 onTapCancel: () => _onHoldEnd(),
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity != null && details.primaryVelocity! > 200) {
+                    _onHoldEnd();
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                  }
+                },
+                onHorizontalDragEnd: (details) {
+                  if (details.primaryVelocity != null && details.primaryVelocity! > 200) {
+                    _onHoldEnd();
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                  }
+                },
                 child: Container(
                   margin: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
