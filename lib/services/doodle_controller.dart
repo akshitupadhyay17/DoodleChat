@@ -53,6 +53,11 @@ class DoodleController extends ChangeNotifier {
 
   /// Brush size in *screen* pixels (converted to virtual units on commit).
   double brushPx = 5.0;
+
+  /// Dedicated eraser radius in *screen* pixels.
+  /// Default is generously sized (36.0 px radius / 72.0 px diameter)
+  /// for comfortable thumb erasing.
+  double eraserPx = 36.0;
   bool eraser = false;
 
   /// When non-null, tapping anywhere on the canvas stamps this emoji.
@@ -77,10 +82,13 @@ class DoodleController extends ChangeNotifier {
   double _initialUnits = 0;
   bool _completed = false;
 
-  /// Dynamic eraser radius scaled by brush size pixel slider.
-  double get eraserScreenRadius => (brushPx * 1.6).clamp(8.0, 75.0);
-  static const double defaultEraserScreenRadius = 26.0;
+  /// Dynamic eraser radius in screen pixels (clamped between 10 and 80).
+  double get eraserScreenRadius => eraserPx.clamp(10.0, 80.0);
+  static const double defaultEraserScreenRadius = 36.0;
   static const double _itemUnits = 140.0;
+
+  /// Current active tool size in screen pixels (eraser radius or brush thickness).
+  double get activeToolPx => eraser ? eraserPx : brushPx;
 
   List<Offset> get livePoints => _live;
   bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty && (backgroundPhoto == null || backgroundPhoto!.isEmpty);
@@ -130,6 +138,9 @@ class DoodleController extends ChangeNotifier {
     _completed = false;
     mustErase = forErasing;
     eraser = forErasing;
+    if (forErasing && eraserPx < 30.0) {
+      eraserPx = defaultEraserScreenRadius;
+    }
     _initialUnits = _remainingUnits();
     eraseProgress.value = 0;
     committed.bump();
@@ -175,7 +186,10 @@ class DoodleController extends ChangeNotifier {
 
   void setEraser(bool v) {
     eraser = v;
-    if (v) stampEmoji = null;
+    if (v) {
+      stampEmoji = null;
+      if (eraserPx < 20.0) eraserPx = defaultEraserScreenRadius;
+    }
     eraserPos = null;
     live.bump();
     notifyListeners();
@@ -202,7 +216,11 @@ class DoodleController extends ChangeNotifier {
   }
 
   void setBrush(double px) {
-    brushPx = px;
+    if (eraser) {
+      eraserPx = px;
+    } else {
+      brushPx = px;
+    }
     notifyListeners();
   }
 
@@ -260,17 +278,76 @@ class DoodleController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addText(String text, [String fontStyle = 'PatrickHand', bool hasBackground = false]) {
-    if (text.trim().isEmpty) return;
-    final rnd = math.Random();
-    final item = DoodleTextItem(
-      text: text.trim(),
-      position: Offset(
-        60 + rnd.nextDouble() * 220,
-        viewHeightVirtual * (0.28 + rnd.nextDouble() * 0.4),
+  /// Automatically calculates optimal font size based on text length and canvas dimensions.
+  double computeAutoScaledFontSize(String text, String fontStyle) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 72.0;
+
+    // Target width: ~80% of virtual width (800 virtual units)
+    const targetW = kVirtualWidth * 0.80;
+
+    final lines = trimmed.split('\n');
+    String longestLine = lines.reduce((a, b) => a.length >= b.length ? a : b);
+    if (longestLine.trim().isEmpty) return 72.0;
+
+    // Quick calibration layout at 100pt
+    final testPainter = TextPainter(
+      text: TextSpan(
+        text: longestLine,
+        style: doodleTextStyle(fontStyle, 100.0, Colors.black),
       ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final measuredW = testPainter.width;
+    if (measuredW <= 0) return 72.0;
+
+    double ideal = 100.0 * (targetW / measuredW);
+
+    // Dynamic constraints based on line count and character length:
+    if (lines.length > 3) {
+      ideal = ideal.clamp(44.0, 70.0);
+    } else if (lines.length > 1) {
+      ideal = ideal.clamp(52.0, 96.0);
+    } else {
+      ideal = ideal.clamp(58.0, 134.0);
+    }
+
+    return ideal;
+  }
+
+  void addText(
+    String text, [
+    String fontStyle = 'PatrickHand',
+    bool hasBackground = false,
+    double? customFontSize,
+  ]) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    final fontSize = customFontSize ?? computeAutoScaledFontSize(trimmed, fontStyle);
+
+    // Layout to calculate exact dimensions for perfect auto-centering
+    final testPainter = TextPainter(
+      text: TextSpan(
+        text: trimmed,
+        style: doodleTextStyle(fontStyle, fontSize, color),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: math.max(120, kVirtualWidth - 48));
+
+    final textW = testPainter.width;
+    final textH = testPainter.height;
+
+    // Auto-center horizontally and place gracefully in upper-middle viewport
+    final posX = ((kVirtualWidth - textW) / 2).clamp(24.0, math.max(24.0, kVirtualWidth - textW - 24.0)).toDouble();
+    final posY = ((viewHeightVirtual - textH) * 0.38).clamp(60.0, math.max(60.0, viewHeightVirtual - textH - 60.0)).toDouble();
+
+    final item = DoodleTextItem(
+      text: trimmed,
+      position: Offset(posX, posY),
       color: color,
-      fontSize: 70,
+      fontSize: fontSize,
       fontStyle: fontStyle,
       hasBackground: hasBackground,
     );
@@ -290,10 +367,13 @@ class DoodleController extends ChangeNotifier {
           (kVirtualWidth - s) / 2,
           (viewHeightVirtual - s) * 0.42,
         );
+    final rnd = math.Random();
+    final rotation = (rnd.nextDouble() - 0.5) * 0.22; // ~ -6° to +6° organic hand tilt!
     final item = DoodleEmojiItem(
       emoji: emoji,
       position: pos,
       size: s,
+      rotation: rotation,
     );
     emojis.add(item);
     _undoStack.add(_DoodleActionRecord.emoji(item));
@@ -315,10 +395,13 @@ class DoodleController extends ChangeNotifier {
       live.bump();
     } else if (stampEmoji != null) {
       final s = emojiSize;
+      final rnd = math.Random();
+      final rotation = (rnd.nextDouble() - 0.5) * 0.24;
       final item = DoodleEmojiItem(
         emoji: stampEmoji!,
         position: Offset(v.dx - s / 2, v.dy - s / 2),
         size: s,
+        rotation: rotation,
       );
       emojis.add(item);
       _undoStack.add(_DoodleActionRecord.emoji(item));
@@ -348,10 +431,13 @@ class DoodleController extends ChangeNotifier {
       final lastPos = emojis.isNotEmpty ? emojis.last.position : null;
       final curPos = Offset(v.dx - s / 2, v.dy - s / 2);
       if (lastPos == null || (curPos - lastPos).distance >= s * 0.85) {
+        final rnd = math.Random();
+        final rotation = (rnd.nextDouble() - 0.5) * 0.24;
         final item = DoodleEmojiItem(
           emoji: stampEmoji!,
           position: curPos,
           size: s,
+          rotation: rotation,
         );
         emojis.add(item);
         _undoStack.add(_DoodleActionRecord.emoji(item));

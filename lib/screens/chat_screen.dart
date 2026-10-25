@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../widgets/doodle_avatar.dart';
 import '../widgets/doodle_canvas.dart';
 import '../widgets/privacy_watermark.dart';
+import '../widgets/cartoon_emoji_renderer.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatContact contact;
@@ -448,7 +449,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       alignment: Alignment.center,
-                                      child: Text(e, style: const TextStyle(fontSize: 22)),
+                                      child: CartoonEmojiWidget(emoji: e, size: 28),
                                     ),
                                   );
                                 }).toList(),
@@ -638,7 +639,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               : DoodleCanvas(controller: _doodle),
 
                           // Instagram Left Vertical Brush-Size & Eraser Slider
-                          if (!isSentWaiting && !isMustErase && !isBlocked)
+                          if (!isSentWaiting && !isBlocked)
                             Positioned(
                               left: 12,
                               top: 20,
@@ -1508,9 +1509,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildInstagramVerticalBrushSlider(bool isDark) {
-    final minSize = 2.0;
-    final maxSize = 38.0;
-    final fraction = ((_doodle.brushPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+    final isEraser = _doodle.eraser;
+    final minSize = isEraser ? 12.0 : 2.0;
+    final maxSize = isEraser ? 75.0 : 38.0;
+    final currentPx = _doodle.activeToolPx;
+    final fraction = ((currentPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+    final activeColor = isEraser ? const Color(0xFFFFC72C) : _doodle.color;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1564,7 +1568,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           height: totalHeight * fraction,
                           margin: const EdgeInsets.only(bottom: 5),
                           decoration: BoxDecoration(
-                            color: _doodle.eraser ? const Color(0xFFFF4081) : _doodle.color,
+                            color: activeColor,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -1588,7 +1592,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 width: 8,
                                 height: 8,
                                 decoration: BoxDecoration(
-                                  color: _doodle.eraser ? const Color(0xFFFF4081) : _doodle.color,
+                                  color: activeColor,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -1618,17 +1622,20 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ],
                         border: Border.all(
-                          color: _doodle.eraser ? const Color(0xFFFF4081) : _doodle.color,
+                          color: activeColor,
                           width: 2,
                         ),
                       ),
                       child: Center(
                         child: Container(
-                          width: (_doodle.brushPx).clamp(4.0, 36.0),
-                          height: (_doodle.brushPx).clamp(4.0, 36.0),
+                          width: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 36.0),
+                          height: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 36.0),
                           decoration: BoxDecoration(
-                            color: _doodle.eraser ? const Color(0xFFFF4081) : _doodle.color,
+                            color: isEraser ? Colors.white.withOpacity(0.6) : _doodle.color,
                             shape: BoxShape.circle,
+                            border: isEraser
+                                ? Border.all(color: const Color(0xFFFFC72C), width: 1.5)
+                                : null,
                           ),
                         ),
                       ),

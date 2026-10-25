@@ -10,6 +10,7 @@ import '../widgets/doodle_canvas.dart';
 import '../widgets/doodle_avatar.dart';
 import '../theme/app_theme.dart';
 import '../models/doodle_stroke.dart';
+import '../widgets/cartoon_emoji_renderer.dart';
 
 /// Standalone doodle creator: DoodleUp!
 /// Modeled after Instagram Draw & Canva tools with full creative control:
@@ -1039,7 +1040,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           color: Colors.grey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Text(e, style: const TextStyle(fontSize: 28)),
+                        child: CartoonEmojiWidget(emoji: e, size: 34),
                       ),
                     );
                   }).toList(),
@@ -2038,10 +2039,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   }
 
   Widget _buildInstagramVerticalBrushSlider(bool isDark) {
-    // 2.0 to 38.0 range
-    final minSize = 2.0;
-    final maxSize = 38.0;
-    final fraction = ((_doodle.brushPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+    final isEraser = _doodle.eraser;
+    final minSize = isEraser ? 12.0 : 2.0;
+    final maxSize = isEraser ? 75.0 : 38.0;
+    final currentPx = _doodle.activeToolPx;
+    final fraction = ((currentPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+    final activeColor = isEraser ? const Color(0xFFFFC72C) : _doodle.color;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2098,7 +2101,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           height: totalHeight * fraction,
                           margin: const EdgeInsets.only(bottom: 6),
                           decoration: BoxDecoration(
-                            color: _doodle.color,
+                            color: activeColor,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -2123,7 +2126,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                 width: 10,
                                 height: 10,
                                 decoration: BoxDecoration(
-                                  color: _doodle.color,
+                                  color: activeColor,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -2156,14 +2159,17 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Exact brush preview circle
+                          // Exact brush or eraser preview circle
                           Container(
-                            width: _doodle.brushPx.clamp(6.0, 32.0),
-                            height: _doodle.brushPx.clamp(6.0, 32.0),
+                            width: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(6.0, 34.0),
+                            height: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(6.0, 34.0),
                             decoration: BoxDecoration(
-                              color: _doodle.color,
+                              color: isEraser ? Colors.white.withOpacity(0.6) : _doodle.color,
                               shape: BoxShape.circle,
-                              boxShadow: _doodle.brushType == DoodleBrushType.neon
+                              border: isEraser
+                                  ? Border.all(color: const Color(0xFFFFC72C), width: 2.0)
+                                  : null,
+                              boxShadow: _doodle.brushType == DoodleBrushType.neon && !isEraser
                                   ? [
                                       BoxShadow(
                                         color: _doodle.color.withOpacity(0.8),
@@ -2175,7 +2181,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${_doodle.brushPx.round()}px',
+                            '${_doodle.activeToolPx.round()}px',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
