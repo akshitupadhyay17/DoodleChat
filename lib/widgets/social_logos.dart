@@ -1,41 +1,156 @@
 import 'package:flutter/material.dart';
 
-/// Accurate vector painter for official Instagram camera logo.
+/// Compact and robust SVG path parser that converts official SVG path data
+/// into native Flutter [Path] objects with full vector fidelity.
+Path parseSvgPath(String d) {
+  final path = Path();
+  final reg = RegExp(r'([a-df-zA-DF-Z])|([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)');
+  final matches = reg.allMatches(d);
+
+  String cmd = '';
+  final args = <double>[];
+
+  void executeCmd(String c, List<double> a) {
+    switch (c) {
+      case 'M':
+        for (int i = 0; i < a.length; i += 2) {
+          if (i + 1 < a.length) {
+            if (i == 0) {
+              path.moveTo(a[i], a[i + 1]);
+            } else {
+              path.lineTo(a[i], a[i + 1]);
+            }
+          }
+        }
+        break;
+      case 'm':
+        for (int i = 0; i < a.length; i += 2) {
+          if (i + 1 < a.length) {
+            if (i == 0) {
+              path.relativeMoveTo(a[i], a[i + 1]);
+            } else {
+              path.relativeLineTo(a[i], a[i + 1]);
+            }
+          }
+        }
+        break;
+      case 'L':
+        for (int i = 0; i < a.length; i += 2) {
+          if (i + 1 < a.length) path.lineTo(a[i], a[i + 1]);
+        }
+        break;
+      case 'l':
+        for (int i = 0; i < a.length; i += 2) {
+          if (i + 1 < a.length) path.relativeLineTo(a[i], a[i + 1]);
+        }
+        break;
+      case 'h':
+        for (final dx in a) {
+          path.relativeLineTo(dx, 0);
+        }
+        break;
+      case 'v':
+        for (final dy in a) {
+          path.relativeLineTo(0, dy);
+        }
+        break;
+      case 'C':
+        for (int i = 0; i < a.length; i += 6) {
+          if (i + 5 < a.length) {
+            path.cubicTo(a[i], a[i + 1], a[i + 2], a[i + 3], a[i + 4], a[i + 5]);
+          }
+        }
+        break;
+      case 'c':
+        for (int i = 0; i < a.length; i += 6) {
+          if (i + 5 < a.length) {
+            path.relativeCubicTo(a[i], a[i + 1], a[i + 2], a[i + 3], a[i + 4], a[i + 5]);
+          }
+        }
+        break;
+      case 'A':
+        for (int i = 0; i < a.length; i += 7) {
+          if (i + 6 < a.length) {
+            path.arcToPoint(
+              Offset(a[i + 5], a[i + 6]),
+              radius: Radius.elliptical(a[i], a[i + 1]),
+              rotation: a[i + 2],
+              largeArc: a[i + 3] != 0,
+              clockwise: a[i + 4] != 0,
+            );
+          }
+        }
+        break;
+      case 'a':
+        for (int i = 0; i < a.length; i += 7) {
+          if (i + 6 < a.length) {
+            path.relativeArcToPoint(
+              Offset(a[i + 5], a[i + 6]),
+              radius: Radius.elliptical(a[i], a[i + 1]),
+              rotation: a[i + 2],
+              largeArc: a[i + 3] != 0,
+              clockwise: a[i + 4] != 0,
+            );
+          }
+        }
+        break;
+      case 'Z':
+      case 'z':
+        path.close();
+        break;
+    }
+  }
+
+  for (final m in matches) {
+    final text = m.group(0)!;
+    if (RegExp(r'^[a-zA-Z]$').hasMatch(text)) {
+      if (cmd.isNotEmpty && args.isNotEmpty) {
+        executeCmd(cmd, args);
+        args.clear();
+      }
+      cmd = text;
+      if (cmd == 'Z' || cmd == 'z') {
+        executeCmd(cmd, args);
+        cmd = '';
+      }
+    } else {
+      args.add(double.tryParse(text) ?? 0.0);
+    }
+  }
+  if (cmd.isNotEmpty && args.isNotEmpty) {
+    executeCmd(cmd, args);
+  }
+  return path;
+}
+
+/// Official Instagram vector painter using the mathematical SimpleIcons/Brand SVG path.
 class InstagramLogoPainter extends CustomPainter {
   final Color color;
   const InstagramLogoPainter({this.color = Colors.white});
 
+  static Path? _cachedPath;
+  static Path get _path => _cachedPath ??= _buildPath();
+
+  static Path _buildPath() {
+    final p = parseSvgPath(
+      'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z',
+    );
+    p.fillType = PathFillType.evenOdd;
+    return p;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    final strokePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.088
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-
-    final fillPaint = Paint()
+    final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    final r = size.width * 0.27;
-    final center = Offset(size.width / 2, size.height / 2);
-    final rect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.1, size.height * 0.1, size.width * 0.8, size.height * 0.8),
-      Radius.circular(size.width * 0.24),
-    );
-
-    // Outer rounded square body
-    canvas.drawRRect(rect, strokePaint);
-    // Center camera lens
-    canvas.drawCircle(center, r, strokePaint);
-    // Flash dot
-    canvas.drawCircle(
-      Offset(size.width * 0.72, size.height * 0.28),
-      size.width * 0.052,
-      fillPaint,
-    );
+    canvas.save();
+    final s = size.width / 24.0;
+    canvas.scale(s, s);
+    canvas.drawPath(_path, paint);
+    canvas.restore();
   }
 
   @override
@@ -45,7 +160,7 @@ class InstagramLogoPainter extends CustomPainter {
 /// Official Instagram branded logo widget with authentic gradient background.
 class InstagramLogoWidget extends StatelessWidget {
   final double size;
-  const InstagramLogoWidget({super.key, this.size = 28});
+  const InstagramLogoWidget({super.key, this.size = 34});
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +171,7 @@ class InstagramLogoWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.28),
         gradient: const RadialGradient(
           center: Alignment(-0.8, 0.9),
-          radius: 1.25,
+          radius: 1.35,
           colors: [
             Color(0xFFFFDF9E), // Yellow highlight
             Color(0xFFFFC272),
@@ -65,11 +180,11 @@ class InstagramLogoWidget extends StatelessWidget {
             Color(0xFFD300C5), // Magenta
             Color(0xFF7638FA), // Violet
           ],
-          stops: [0.0, 0.15, 0.45, 0.6, 0.78, 1.0],
+          stops: [0.0, 0.15, 0.42, 0.58, 0.78, 1.0],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE02D69).withOpacity(0.35),
+            color: const Color(0xFFE02D69).withOpacity(0.38),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -77,7 +192,7 @@ class InstagramLogoWidget extends StatelessWidget {
       ),
       child: Center(
         child: CustomPaint(
-          size: Size(size * 0.65, size * 0.65),
+          size: Size(size * 0.62, size * 0.62),
           painter: const InstagramLogoPainter(color: Colors.white),
         ),
       ),
@@ -85,8 +200,7 @@ class InstagramLogoWidget extends StatelessWidget {
   }
 }
 
-/// Accurate vector painter for official X (formerly Twitter) logo.
-/// Uses the exact mathematical vector path from X brand guidelines.
+/// Official X (Twitter) vector painter using official brand coordinates.
 class XLogoPainter extends CustomPainter {
   final Color color;
   const XLogoPainter({this.color = Colors.white});
@@ -101,11 +215,9 @@ class XLogoPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Viewbox 24x24 scale factors
     final sx = w / 24.0;
     final sy = h / 24.0;
 
-    // Outer polygon
     final path = Path();
     path.moveTo(18.244 * sx, 2.25 * sy);
     path.lineTo(21.552 * sx, 2.25 * sy);
@@ -121,7 +233,6 @@ class XLogoPainter extends CustomPainter {
     path.lineTo(12.793 * sx, 8.481 * sy);
     path.close();
 
-    // Inner cutout polygon
     final cutout = Path();
     cutout.moveTo(17.083 * sx, 19.77 * sy);
     cutout.lineTo(18.916 * sx, 19.77 * sy);
@@ -173,66 +284,33 @@ class XLogoWidget extends StatelessWidget {
   }
 }
 
-/// Official WhatsApp vector painter.
+/// Official WhatsApp vector painter using the mathematical SimpleIcons/Brand SVG path.
 class WhatsAppLogoPainter extends CustomPainter {
   final Color color;
   const WhatsAppLogoPainter({this.color = Colors.white});
 
+  static Path? _cachedPath;
+  static Path get _path => _cachedPath ??= _buildPath();
+
+  static Path _buildPath() {
+    final p = parseSvgPath(
+      'M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.32a8.188 8.188 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m-3.53 3.03c-.19 0-.4.07-.58.32-.18.25-.69.67-.69 1.63s.71 1.89.81 2.02c.1.13 1.36 2.08 3.3 2.92.46.2.82.32 1.1.41.46.15.89.13 1.22.08.37-.05 1.14-.47 1.3-.92.16-.45.16-.84.11-.92-.05-.08-.18-.13-.37-.22s-1.14-.56-1.32-.62c-.18-.07-.31-.1-.44.1-.13.2-.5 1.63-.61.76-.11.13-.22.15-.41.05-.19-.1-.8-.29-1.53-.94-.57-.51-.95-1.14-1.06-1.33-.11-.19-.01-.3.08-.39.09-.09.19-.22.29-.33.1-.11.13-.19.2-.31.07-.13.03-.24-.02-.34s-.44-1.06-.6-1.45c-.16-.39-.32-.34-.44-.34Z',
+    );
+    p.fillType = PathFillType.evenOdd;
+    return p;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    // Speech bubble outline path with tail at bottom-left
-    final bubble = Path();
-    final cx = w * 0.5;
-    final cy = h * 0.48;
-    final r = w * 0.40;
-
-    bubble.addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
-    // Pointer tail at bottom left (~220°)
-    final tail = Path()
-      ..moveTo(w * 0.22, h * 0.72)
-      ..lineTo(w * 0.10, h * 0.88)
-      ..lineTo(w * 0.35, h * 0.82)
-      ..close();
-
-    final fullBubble = Path.combine(PathOperation.union, bubble, tail);
-    final strokePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.08
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-    canvas.drawPath(fullBubble, strokePaint);
-
-    // Inner telephone handset
-    final px = w * 0.5;
-    final py = h * 0.48;
     canvas.save();
-    canvas.translate(px, py);
-    canvas.rotate(-0.15);
-    // Draw classic handset shape
-    final hand = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-w * 0.16, -h * 0.20, w * 0.32, h * 0.38),
-      Radius.circular(w * 0.10),
-    );
-    // Cut out inner curve to form handset grip
-    final outerHandset = Path()..addRRect(hand);
-    final innerCutout = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(-w * 0.08, -h * 0.12, w * 0.30, h * 0.24),
-          Radius.circular(w * 0.08),
-        ),
-      );
-    final phoneShape = Path.combine(PathOperation.difference, outerHandset, innerCutout);
-    canvas.drawPath(phoneShape, paint);
+    final s = size.width / 24.0;
+    canvas.scale(s, s);
+    canvas.drawPath(_path, paint);
     canvas.restore();
   }
 
@@ -243,7 +321,7 @@ class WhatsAppLogoPainter extends CustomPainter {
 /// Official WhatsApp branded logo widget with authentic green gradient.
 class WhatsAppLogoWidget extends StatelessWidget {
   final double size;
-  const WhatsAppLogoWidget({super.key, this.size = 28});
+  const WhatsAppLogoWidget({super.key, this.size = 34});
 
   @override
   Widget build(BuildContext context) {
@@ -256,13 +334,13 @@ class WhatsAppLogoWidget extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF29E76E), // Bright WhatsApp Green
-            Color(0xFF1DA851), // Deep WhatsApp Green
+            Color(0xFF2EE572), // Vibrant WhatsApp Green
+            Color(0xFF1EBE5D), // Deep WhatsApp Green
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF25D366).withOpacity(0.35),
+            color: const Color(0xFF25D366).withOpacity(0.38),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),

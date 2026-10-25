@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // WhatsApp (Official Logo)
                     Expanded(
                       child: _buildShareTile(
-                        iconWidget: const WhatsAppLogoWidget(size: 28),
+                        iconWidget: const WhatsAppLogoWidget(size: 34),
                         label: 'WhatsApp',
                         color: const Color(0xFF25D366),
                         onTap: () {
@@ -162,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Instagram (Official Logo)
                     Expanded(
                       child: _buildShareTile(
-                        iconWidget: const InstagramLogoWidget(size: 28),
+                        iconWidget: const InstagramLogoWidget(size: 34),
                         label: 'Instagram',
                         color: const Color(0xFFE1306C),
                         onTap: () {
@@ -182,17 +182,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Expanded(
                       child: _buildShareTile(
                         iconWidget: Container(
-                          width: 28,
-                          height: 28,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
                             color: AppTheme.cyberViolet.withOpacity(0.18),
                             shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.cyberViolet.withOpacity(0.3), width: 1.5),
                           ),
                           child: const Center(
-                            child: Icon(Icons.link_rounded, color: AppTheme.cyberViolet, size: 17),
+                            child: Icon(Icons.link_rounded, color: AppTheme.cyberViolet, size: 20),
                           ),
                         ),
-                        label: 'Copy',
+                        label: 'Copy Link',
                         color: AppTheme.cyberViolet,
                         onTap: () {
                           Navigator.pop(ctx);
@@ -241,22 +242,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.10),
+          color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.20), width: 1),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             iconWidget,
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
                 color: color,
               ),
