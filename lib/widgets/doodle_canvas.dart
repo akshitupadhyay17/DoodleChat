@@ -200,7 +200,7 @@ class _LivePainter extends CustomPainter {
       canvas.save();
       canvas.scale(scale);
       final virtSize = c.brushPx / scale;
-      final path = buildFreehandPath(pts, virtSize);
+      final path = buildFreehandPath(pts, virtSize, brushType: c.brushType);
 
       switch (c.brushType) {
         case DoodleBrushType.neon:
@@ -247,21 +247,22 @@ class _LivePainter extends CustomPainter {
     final pos = c.eraserPos;
     if (pos != null) {
       final center = pos * scale;
+      final rad = c.eraserScreenRadius;
       canvas.drawCircle(
         center,
-        DoodleController.eraserScreenRadius + 3,
+        rad + 3,
         Paint()
           ..color = Colors.black.withValues(alpha: 0.12)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
       );
       canvas.drawCircle(
         center,
-        DoodleController.eraserScreenRadius,
+        rad,
         Paint()..color = Colors.white.withValues(alpha: 0.45),
       );
       canvas.drawCircle(
         center,
-        DoodleController.eraserScreenRadius,
+        rad,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.5

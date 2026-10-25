@@ -47,7 +47,7 @@ class DoodleStroke {
   }
 
   /// Cached, smoothed variable-width outline (perfect_freehand).
-  Path get path => _path ??= buildFreehandPath(points, size, complete: true);
+  Path get path => _path ??= buildFreehandPath(points, size, complete: true, brushType: brushType);
 
   double get length {
     if (_length != null) return _length!;
@@ -94,27 +94,71 @@ class DoodleStroke {
   }
 }
 
-/// Smooth variable-width freehand path for a list of points.
-Path buildFreehandPath(List<Offset> pts, double size, {bool complete = false}) {
+/// Smooth variable-width freehand path tailored for each brush type.
+Path buildFreehandPath(
+  List<Offset> pts,
+  double size, {
+  bool complete = false,
+  DoodleBrushType brushType = DoodleBrushType.pen,
+}) {
   final path = Path();
   if (pts.isEmpty) return path;
+
+  double actualSize = size;
+  double thinning = 0.45;
+  double smoothing = 0.65;
+  double streamline = 0.55;
+  bool simulatePressure = true;
+
+  switch (brushType) {
+    case DoodleBrushType.pen:
+      actualSize = size;
+      thinning = 0.45;
+      smoothing = 0.65;
+      streamline = 0.55;
+      simulatePressure = true;
+      break;
+    case DoodleBrushType.marker:
+      // Real chisel marker: bold, broad, consistent width with no delicate thinning
+      actualSize = size * 1.85;
+      thinning = 0.0;
+      smoothing = 0.5;
+      streamline = 0.4;
+      simulatePressure = false;
+      break;
+    case DoodleBrushType.neon:
+      actualSize = size * 1.1;
+      thinning = 0.25;
+      smoothing = 0.6;
+      streamline = 0.5;
+      simulatePressure = true;
+      break;
+    case DoodleBrushType.highlighter:
+      actualSize = size * 2.5;
+      thinning = -0.05;
+      smoothing = 0.5;
+      streamline = 0.4;
+      simulatePressure = false;
+      break;
+  }
+
   if (pts.length == 1) {
-    path.addOval(Rect.fromCircle(center: pts.first, radius: size / 2));
+    path.addOval(Rect.fromCircle(center: pts.first, radius: actualSize / 2));
     return path;
   }
   final outline = getStroke(
     [for (final p in pts) PointVector(p.dx, p.dy)],
     options: StrokeOptions(
-      size: size,
-      thinning: 0.35,
-      smoothing: 0.6,
-      streamline: 0.5,
-      simulatePressure: true,
+      size: actualSize,
+      thinning: thinning,
+      smoothing: smoothing,
+      streamline: streamline,
+      simulatePressure: simulatePressure,
       isComplete: complete,
     ),
   );
   if (outline.length < 2) {
-    path.addOval(Rect.fromCircle(center: pts.first, radius: size / 2));
+    path.addOval(Rect.fromCircle(center: pts.first, radius: actualSize / 2));
     return path;
   }
   path.moveTo(outline.first.dx, outline.first.dy);

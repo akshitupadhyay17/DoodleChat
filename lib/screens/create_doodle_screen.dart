@@ -1032,13 +1032,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                         _doodle.addEmoji(e);
                         Navigator.pop(ctx);
                         HapticFeedback.selectionClick();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Added $e graphic to canvas! ✨'),
-                            duration: const Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
@@ -1111,13 +1104,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                         Navigator.pop(ctx);
                         _doodle.addShape(s['id']!);
                         HapticFeedback.mediumImpact();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Added ${s['name']} shape to canvas! ✨'),
-                            duration: const Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
                       },
                       child: Column(
                         mainAxisSize: MainAxisSize.min,

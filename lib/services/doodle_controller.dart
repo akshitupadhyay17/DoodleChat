@@ -77,7 +77,9 @@ class DoodleController extends ChangeNotifier {
   double _initialUnits = 0;
   bool _completed = false;
 
-  static const double eraserScreenRadius = 26.0;
+  /// Dynamic eraser radius scaled by brush size pixel slider.
+  double get eraserScreenRadius => (brushPx * 1.6).clamp(8.0, 75.0);
+  static const double defaultEraserScreenRadius = 26.0;
   static const double _itemUnits = 140.0;
 
   List<Offset> get livePoints => _live;
