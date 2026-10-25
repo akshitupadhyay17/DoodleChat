@@ -279,13 +279,14 @@ class DoodleController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _ignorePointerUntilUp = false;
+
   void addEmoji(String emoji, {Offset? virtualPos, double? customSize}) {
     final s = customSize ?? emojiSize;
-    final rnd = math.Random();
     final pos = virtualPos ??
         Offset(
-          120 + rnd.nextDouble() * 560,
-          viewHeightVirtual * (0.22 + rnd.nextDouble() * 0.5),
+          (kVirtualWidth - s) / 2,
+          (viewHeightVirtual - s) * 0.42,
         );
     final item = DoodleEmojiItem(
       emoji: emoji,
@@ -303,6 +304,7 @@ class DoodleController extends ChangeNotifier {
   // ───────────────────────── pointer input (screen px) ─────────────────────────
 
   void pointerDown(Offset screen) {
+    _ignorePointerUntilUp = false;
     if (locked) return;
     final v = screen / scale;
     if (eraser) {
@@ -332,7 +334,7 @@ class DoodleController extends ChangeNotifier {
   }
 
   void pointerMove(Offset screen) {
-    if (locked) return;
+    if (locked || _ignorePointerUntilUp) return;
     final v = screen / scale;
     if (eraser) {
       eraserPos = v;
@@ -364,6 +366,13 @@ class DoodleController extends ChangeNotifier {
   }
 
   void pointerUp() {
+    if (_ignorePointerUntilUp) {
+      _ignorePointerUntilUp = false;
+      _live.clear();
+      eraserPos = null;
+      live.bump();
+      return;
+    }
     if (locked) return;
     if (eraser) {
       eraserPos = null;
@@ -465,6 +474,10 @@ class DoodleController extends ChangeNotifier {
     onEraseProgress?.call(eraseProgress.value);
     if (mustErase && isEmpty && !_completed) {
       _completed = true;
+      _ignorePointerUntilUp = true;
+      _live.clear();
+      eraserPos = null;
+      live.bump();
       eraseProgress.value = 1;
       onErasedAll?.call();
       notifyListeners();

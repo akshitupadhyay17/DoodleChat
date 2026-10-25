@@ -369,12 +369,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                 if (!_emojiDoodles.contains(text)) {
                                   setState(() => _emojiDoodles.insert(0, text));
                                 }
-                                _doodle.setStampEmoji(text);
                                 _doodle.addEmoji(text);
                                 _markDrawing();
                                 HapticFeedback.mediumImpact();
                                 Navigator.pop(ctx);
-                                _toast('Stamp selected! Tap canvas to stamp more ✨', const Color(0xFFFFC72C));
+                                _toast('Added "$text" graphic to canvas! ✨', const Color(0xFFFFC72C));
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -419,12 +418,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                       if (!_emojiDoodles.contains(e)) {
                                         setState(() => _emojiDoodles.insert(0, e));
                                       }
-                                      _doodle.setStampEmoji(e);
                                       _doodle.addEmoji(e);
                                       _markDrawing();
                                       HapticFeedback.selectionClick();
                                       Navigator.pop(ctx);
-                                      _toast('Stamped "$e"! Tap canvas to stamp more 🎨', const Color(0xFFFFC72C));
+                                      _toast('Added "$e" graphic to canvas! 🎨', const Color(0xFFFFC72C));
                                     },
                                     child: Container(
                                       width: 44,
@@ -701,68 +699,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             },
                           ),
 
-                          // Active Stamp Mode floating indicator
-                          ListenableBuilder(
-                            listenable: _doodle,
-                            builder: (context, _) {
-                              final stamp = _doodle.stampEmoji;
-                              if (stamp == null || isSentWaiting || isMustErase || isBlocked) {
-                                return const SizedBox.shrink();
-                              }
-                              return Positioned(
-                                top: 12,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E1E26).withValues(alpha: 0.88),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color(0xFFFFC72C), width: 1.5),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.25),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(stamp, style: const TextStyle(fontSize: 18)),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Stamp mode: tap canvas to place',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        GestureDetector(
-                                          onTap: () {
-                                            _doodle.setStampEmoji(null);
-                                            HapticFeedback.selectionClick();
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.all(2),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.white24,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                          const SizedBox.shrink(),
                         ],
                       ),
                     ),
@@ -1269,31 +1206,19 @@ class _ChatScreenState extends State<ChatScreen> {
                     // Quick Stamps list
                     ..._emojiDoodles.map(
                       (emoji) {
-                        final isStampActive = _doodle.stampEmoji == emoji;
                         return _Pressable(
                           onTap: () {
-                            if (isStampActive) {
-                              _doodle.setStampEmoji(null);
-                            } else {
-                              _doodle.setStampEmoji(emoji);
-                              _doodle.addEmoji(emoji);
-                              _markDrawing();
-                            }
+                            _doodle.addEmoji(emoji);
+                            _markDrawing();
                             HapticFeedback.selectionClick();
+                            _toast('Added "$emoji" graphic to canvas! 🎨', const Color(0xFFFFC72C));
                           },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
+                          child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 3),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isStampActive
-                                  ? const Color(0xFFFFC72C).withValues(alpha: 0.3)
-                                  : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isStampActive ? const Color(0xFFFFC72C) : Colors.transparent,
-                                width: 1.5,
-                              ),
                             ),
                             child: Text(emoji, style: const TextStyle(fontSize: 18)),
                           ),

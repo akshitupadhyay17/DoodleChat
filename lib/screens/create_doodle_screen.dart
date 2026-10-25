@@ -1018,7 +1018,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Stamps & Stickers', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                    Text('Stickers & Emojis', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
                     IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
@@ -1029,12 +1029,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                   children: _quickEmojis.map((e) {
                     return GestureDetector(
                       onTap: () {
-                        setState(() => _doodle.setStampEmoji(e));
+                        _doodle.addEmoji(e);
                         Navigator.pop(ctx);
                         HapticFeedback.selectionClick();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Tap anywhere on canvas to stamp $e! ✨'),
+                            content: Text('Added $e graphic to canvas! ✨'),
                             duration: const Duration(seconds: 2),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -1197,7 +1197,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             const Text('🔤', style: TextStyle(fontSize: 20)),
                             const SizedBox(width: 8),
                             Text(
-                              'Story & Canva Text',
+                              'Canva Text Studio',
                               style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
                             ),
                           ],
@@ -1473,196 +1473,111 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar: Back, Undo, Redo, Clear, "DoodleUp 🚀"
+            // Top Minimal Navigation Header (Distraction-free & Clean)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(
                 children: [
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 18,
-                        color: isDark ? Colors.white : const Color(0xFF0E1017),
-                      ),
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // Undo Button
-                  InkWell(
-                    onTap: _doodle.canUndo
-                        ? () {
-                            _doodle.undo();
-                            HapticFeedback.lightImpact();
-                          }
-                        : null,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.undo_rounded,
-                        size: 20,
-                        color: _doodle.canUndo ? (isDark ? Colors.white : const Color(0xFF0E1017)) : Colors.grey.withOpacity(0.3),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-
-                  // Redo Button
-                  InkWell(
-                    onTap: _doodle.canRedo
-                        ? () {
-                            _doodle.redo();
-                            HapticFeedback.lightImpact();
-                          }
-                        : null,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.redo_rounded,
-                        size: 20,
-                        color: _doodle.canRedo ? (isDark ? Colors.white : const Color(0xFF0E1017)) : Colors.grey.withOpacity(0.3),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-
-                  // Clear Canvas Button
-                  InkWell(
-                    onTap: _showClearConfirm,
-                    borderRadius: BorderRadius.circular(8),
-                    child: const Padding(
-                      padding: EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.delete_outline_rounded,
-                        size: 20,
-                        color: Color(0xFF8A90A6),
-                      ),
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // Primary DoodleUp CTA
+                  // Back Button with subtle frosted bubble
                   Container(
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.electricPink, AppTheme.cyberViolet],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+                      color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.electricPink.withOpacity(0.35),
-                          blurRadius: 8,
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: InkWell(
-                      onTap: _onSendTapped,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.rocket_launch_rounded, size: 13, color: Colors.white),
-                            const SizedBox(width: 4),
-                            Text(
-                              'DoodleUp',
-                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white),
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(18),
+                      child: Center(
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
+                          color: isDark ? Colors.white : const Color(0xFF0E1017),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Title Pill: DoodleUp Studio
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.electricPink, AppTheme.cyberViolet],
                             ),
-                          ],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.initialGroupId != null ? 'Group Doodle' : 'DoodleUp',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF0E1017),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Clear Canvas Button (Clean Trash Icon)
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: _showClearConfirm,
+                      borderRadius: BorderRadius.circular(18),
+                      child: const Center(
+                        child: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: Color(0xFF8A90A6),
                         ),
                       ),
                     ),
                   ),
                 ],
-              ),
-            ),
-
-            // Instagram Draw Segmented Brush Shelf (Horizontally Scrollable / Overflow Proof)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-              child: Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1B1B24) : Colors.white,
-                  borderRadius: BorderRadius.circular(19),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    shrinkWrap: true,
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      _buildBrushModePill(
-                        label: 'Pen',
-                        icon: Icons.edit_rounded,
-                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.pen,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _doodle.setBrushType(DoodleBrushType.pen));
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      _buildBrushModePill(
-                        label: 'Marker',
-                        icon: Icons.brush_rounded,
-                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.marker,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _doodle.setBrushType(DoodleBrushType.marker));
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      _buildBrushModePill(
-                        label: 'Neon',
-                        icon: Icons.auto_awesome_rounded,
-                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.neon,
-                        isSpecialGlow: true,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _doodle.setBrushType(DoodleBrushType.neon));
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      _buildBrushModePill(
-                        label: 'Highlighter',
-                        icon: Icons.highlight_rounded,
-                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.highlighter,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _doodle.setBrushType(DoodleBrushType.highlighter));
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      _buildBrushModePill(
-                        label: 'Eraser',
-                        icon: Icons.cleaning_services_rounded,
-                        isActive: _doodle.eraser,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _doodle.setEraser(!_doodle.eraser));
-                        },
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
 
@@ -1703,7 +1618,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 ),
               ),
 
-            // Canvas Surface with Instagram Left Vertical Brush Slider Overlay
+            // Canvas Surface with Instagram Left Vertical Brush Slider
             Expanded(
               child: Stack(
                 children: [
@@ -1729,86 +1644,147 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                   // Instagram Left Vertical Brush-Size Slider
                   Positioned(
                     left: 24,
-                    top: 40,
-                    bottom: 40,
+                    top: 30,
+                    bottom: 30,
                     child: _buildInstagramVerticalBrushSlider(isDark),
                   ),
                 ],
               ),
             ),
 
-            // Bottom Floating Controls: Colors & Canva Elements Bar
+            // ════════════════════════════════════════════════════════════════════
+            // Ergonomic Bottom Thumb Deck (Everything Easily Reachable With Thumbs)
+            // ════════════════════════════════════════════════════════════════════
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Row 1: Instagram Color Palette with Palette Picker Icon
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 38,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: _colors.map((c) {
-                              final isSelected = _doodle.color == c && !_doodle.eraser;
-                              return GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  setState(() {
-                                    _doodle.setEraser(false);
-                                    _doodle.setColor(c);
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 160),
-                                  width: isSelected ? 34 : 26,
-                                  height: isSelected ? 34 : 26,
-                                  margin: const EdgeInsets.only(right: 8),
-                                  decoration: BoxDecoration(
-                                    color: c,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withOpacity(0.3),
-                                      width: isSelected ? 3 : 1.5,
-                                    ),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: c.withOpacity(0.55),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
+                  // Row 1: Brush Modes + Undo / Redo (Thumb Accessible)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Undo Thumb Button
+                        _buildThumbHistoryButton(
+                          icon: Icons.undo_rounded,
+                          enabled: _doodle.canUndo,
+                          tooltip: 'Undo',
+                          isDark: isDark,
+                          onTap: () {
+                            _doodle.undo();
+                            HapticFeedback.lightImpact();
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        // Redo Thumb Button
+                        _buildThumbHistoryButton(
+                          icon: Icons.redo_rounded,
+                          enabled: _doodle.canRedo,
+                          tooltip: 'Redo',
+                          isDark: isDark,
+                          onTap: () {
+                            _doodle.redo();
+                            HapticFeedback.lightImpact();
+                          },
+                        ),
+
+                        // Subtle Divider
+                        Container(
+                          width: 1,
+                          height: 20,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
+
+                        // Horizontally scrollable brush pills
+                        Expanded(
+                          child: SizedBox(
+                            height: 32,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                _buildBrushModePill(
+                                  label: 'Pen',
+                                  icon: Icons.edit_rounded,
+                                  isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.pen,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _doodle.setBrushType(DoodleBrushType.pen));
+                                  },
                                 ),
-                              );
-                            }).toList(),
+                                const SizedBox(width: 4),
+                                _buildBrushModePill(
+                                  label: 'Marker',
+                                  icon: Icons.brush_rounded,
+                                  isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.marker,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _doodle.setBrushType(DoodleBrushType.marker));
+                                  },
+                                ),
+                                const SizedBox(width: 4),
+                                _buildBrushModePill(
+                                  label: 'Neon',
+                                  icon: Icons.auto_awesome_rounded,
+                                  isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.neon,
+                                  isSpecialGlow: true,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _doodle.setBrushType(DoodleBrushType.neon));
+                                  },
+                                ),
+                                const SizedBox(width: 4),
+                                _buildBrushModePill(
+                                  label: 'Highlighter',
+                                  icon: Icons.highlight_rounded,
+                                  isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.highlighter,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _doodle.setBrushType(DoodleBrushType.highlighter));
+                                  },
+                                ),
+                                const SizedBox(width: 4),
+                                _buildBrushModePill(
+                                  label: 'Eraser',
+                                  icon: Icons.cleaning_services_rounded,
+                                  isActive: _doodle.eraser,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _doodle.setEraser(!_doodle.eraser));
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-
-                      // Color Palette Picker button
-                      IconButton(
-                        icon: const Icon(Icons.palette_rounded, size: 22, color: AppTheme.electricPink),
-                        tooltip: 'More colors',
-                        onPressed: _showColorPickerModal,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
-                  // Row 2: Canva Creative Bar (Photo, Text Studio, Shapes, Stickers)
+                  // Row 2: Color Palette + Custom HSV Picker
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1B1B24) : Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1816,52 +1792,204 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Photo
                         Expanded(
-                          child: _buildBottomActionButton(
-                            icon: Icons.add_photo_alternate_rounded,
-                            label: 'Photo',
-                            color: const Color(0xFFFF7675),
-                            onTap: _pickPhoto,
+                          child: SizedBox(
+                            height: 32,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: _colors.map((c) {
+                                final isSelected = _doodle.color == c && !_doodle.eraser;
+                                return GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() {
+                                      _doodle.setEraser(false);
+                                      _doodle.setColor(c);
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    width: isSelected ? 30 : 24,
+                                    height: isSelected ? 30 : 24,
+                                    margin: const EdgeInsets.only(right: 7),
+                                    decoration: BoxDecoration(
+                                      color: c,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.3),
+                                        width: isSelected ? 2.5 : 1.2,
+                                      ),
+                                      boxShadow: isSelected
+                                          ? [
+                                              BoxShadow(
+                                                color: c.withValues(alpha: 0.55),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
 
-                        // Canva / Story Text Studio
-                        Expanded(
-                          child: _buildBottomActionButton(
-                            icon: Icons.text_fields_rounded,
-                            label: 'Text',
-                            color: const Color(0xFF00CEC9),
-                            onTap: _showTextStudio,
-                          ),
-                        ),
-
-                        // Canva Shapes
-                        Expanded(
-                          child: _buildBottomActionButton(
-                            icon: Icons.interests_rounded,
-                            label: 'Shapes',
-                            color: const Color(0xFF6C5CE7),
-                            onTap: _showShapesSheet,
-                          ),
-                        ),
-
-                        // Stickers & Stamps
-                        Expanded(
-                          child: _buildBottomActionButton(
-                            icon: Icons.emoji_emotions_rounded,
-                            label: 'Stickers',
-                            color: const Color(0xFFFFC72C),
-                            onTap: _showEmojiSheet,
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.palette_rounded, size: 20, color: AppTheme.electricPink),
+                          tooltip: 'More colors',
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: _showColorPickerModal,
                         ),
                       ],
                     ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Row 3: Canva Studio Creative Elements + Primary Thumb Action CTA
+                  Row(
+                    children: [
+                      // Canva Creative Elements Dock
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildBottomActionButton(
+                                  icon: Icons.add_photo_alternate_rounded,
+                                  label: 'Photo',
+                                  color: const Color(0xFFFF7675),
+                                  onTap: _pickPhoto,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildBottomActionButton(
+                                  icon: Icons.text_fields_rounded,
+                                  label: 'Text',
+                                  color: const Color(0xFF00CEC9),
+                                  onTap: _showTextStudio,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildBottomActionButton(
+                                  icon: Icons.interests_rounded,
+                                  label: 'Shapes',
+                                  color: const Color(0xFF6C5CE7),
+                                  onTap: _showShapesSheet,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildBottomActionButton(
+                                  icon: Icons.emoji_emotions_rounded,
+                                  label: 'Stickers',
+                                  color: const Color(0xFFFFC72C),
+                                  onTap: _showEmojiSheet,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      // Primary "Post DoodleUp" Thumb Action Button
+                      Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.electricPink, AppTheme.cyberViolet],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.electricPink.withValues(alpha: 0.38),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _onSendTapped,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.rocket_launch_rounded, size: 16, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'DoodleUp',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbHistoryButton({
+    required IconData icon,
+    required bool enabled,
+    required String tooltip,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: enabled
+              ? (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Icon(
+            icon,
+            size: 16,
+            color: enabled
+                ? (isDark ? Colors.white : const Color(0xFF0E1017))
+                : (isDark ? Colors.white24 : Colors.black26),
+          ),
         ),
       ),
     );
