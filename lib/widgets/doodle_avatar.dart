@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/doodle_stroke.dart';
+import '../models/chat_contact.dart';
+import '../services/chat_service.dart';
+import '../screens/create_doodle_screen.dart';
 import '../theme/app_theme.dart';
 import 'story_viewer_sheet.dart';
 
@@ -75,8 +78,35 @@ class DoodleAvatar extends StatelessWidget {
             senderUsername: username,
             senderEmoji: emoji,
             senderColor: color,
-            senderPhoto: photoBase64,
-            onReply: onStoryReply,
+            onReply: onStoryReply ??
+                () {
+                  final chatService = ChatService();
+                  ChatContact? target;
+                  for (final c in chatService.contacts) {
+                    if (c.username == username) {
+                      target = c;
+                      break;
+                    }
+                  }
+                  target ??= ChatContact(
+                    id: username,
+                    username: username,
+                    name: displayName.isNotEmpty ? displayName : '@$username',
+                    avatarEmoji: emoji,
+                    avatarColor: color,
+                    avatarPhotoBase64: photoBase64,
+                    activeStory: activeStory,
+                  );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateDoodleScreen(
+                        replyToContact: target,
+                        replyToStory: activeStory,
+                      ),
+                    ),
+                  );
+                },
           );
         },
         child: Container(

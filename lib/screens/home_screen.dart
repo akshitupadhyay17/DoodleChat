@@ -754,6 +754,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       displayName: contact.name,
                       username: contact.username,
                       radius: 27,
+                      onStoryReply: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CreateDoodleScreen(
+                              replyToContact: contact,
+                              replyToStory: contact.activeStory,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 6),
                     SizedBox(

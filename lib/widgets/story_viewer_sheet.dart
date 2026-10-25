@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/doodle_stroke.dart';
+import '../models/chat_contact.dart';
+import '../services/chat_service.dart';
 import '../services/doodle_controller.dart';
+import '../screens/create_doodle_screen.dart';
 import 'doodle_canvas.dart';
 
 class StoryViewerSheet extends StatefulWidget {
@@ -333,8 +336,38 @@ class _StoryViewerSheetState extends State<StoryViewerSheet> with SingleTickerPr
                     const SizedBox(width: 10),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context);
-                        widget.onReply?.call();
+                        final navigator = Navigator.of(context);
+                        final onReplyCallback = widget.onReply;
+                        navigator.pop();
+                        if (onReplyCallback != null) {
+                          onReplyCallback();
+                        } else {
+                          final chatService = ChatService();
+                          ChatContact? target;
+                          for (final c in chatService.contacts) {
+                            if (c.username == widget.senderUsername) {
+                              target = c;
+                              break;
+                            }
+                          }
+                          target ??= ChatContact(
+                            id: widget.senderUsername,
+                            username: widget.senderUsername,
+                            name: widget.senderName,
+                            avatarEmoji: widget.senderEmoji,
+                            avatarColor: widget.senderColor,
+                            avatarPhotoBase64: widget.senderPhoto,
+                            activeStory: widget.story,
+                          );
+                          navigator.push(
+                            MaterialPageRoute(
+                              builder: (_) => CreateDoodleScreen(
+                                replyToContact: target,
+                                replyToStory: widget.story,
+                              ),
+                            ),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFFC72C),

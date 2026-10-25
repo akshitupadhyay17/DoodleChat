@@ -548,14 +548,18 @@ class _CropperToolIconPainter extends CustomPainter {
 
     switch (type) {
       case 'rotate':
-        // Circular arc with clockwise arrow head
-        final rect = Rect.fromCircle(center: Offset(cx, cy), radius: w * 0.38);
-        canvas.drawArc(rect, -math.pi * 0.8, math.pi * 1.5, false, strokePaint);
-        // Arrow head at top right
-        final arrowPath = Path();
-        arrowPath.moveTo(cx + w * 0.12, cy - w * 0.52);
-        arrowPath.lineTo(cx + w * 0.40, cy - w * 0.38);
-        arrowPath.lineTo(cx + w * 0.20, cy - w * 0.16);
+        final scale = w / 24.0;
+        final r = 6.8 * scale;
+        final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
+        // Circular arc from 3 o'clock (0 rad) sweeping clockwise 270 deg (1.5*pi) to 12 o'clock
+        canvas.drawArc(rect, 0.0, 1.5 * math.pi, false, strokePaint);
+        // Small horizontal extension leading smoothly into arrowhead
+        canvas.drawLine(Offset(cx, cy - r), Offset(cx + 3.2 * scale, cy - r), strokePaint);
+        // Sharp, balanced arrowhead pointing right
+        final arrowPath = Path()
+          ..moveTo(cx - 0.5 * scale, cy - r - 3.2 * scale)
+          ..lineTo(cx + 3.2 * scale, cy - r)
+          ..lineTo(cx - 0.5 * scale, cy - r + 3.2 * scale);
         canvas.drawPath(arrowPath, strokePaint);
         break;
 

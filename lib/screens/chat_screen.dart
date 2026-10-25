@@ -47,6 +47,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isDraggingBrushSlider = false;
   bool? _lastThemeDark;
 
+  String? _topToastMessage;
+  Color _topToastColor = const Color(0xFF00B894);
+  IconData? _topToastIcon;
+  Timer? _topToastTimer;
+  bool _topToastVisible = false;
+
   final List<Color> _colors = const [
     Colors.white,
     Colors.black,
@@ -107,6 +113,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _service.removeListener(_syncFromService);
     _eventSub?.cancel();
     _drawingTimer?.cancel();
+    _topToastTimer?.cancel();
     if (_iAmDrawing) _service.sendDrawingState(_contact, false);
     _speech.cancel();
     _confetti.dispose();
@@ -187,18 +194,24 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _toast(String msg, Color color) {
+  void _showTopNotification(String msg, Color color, {IconData? icon}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(msg, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+    _topToastTimer?.cancel();
+    setState(() {
+      _topToastMessage = msg;
+      _topToastColor = color;
+      _topToastIcon = icon ?? Icons.info_outline_rounded;
+      _topToastVisible = true;
+    });
+    _topToastTimer = Timer(const Duration(milliseconds: 3200), () {
+      if (mounted) {
+        setState(() => _topToastVisible = false);
+      }
+    });
+  }
+
+  void _toast(String msg, Color color, {IconData? icon}) {
+    _showTopNotification(msg, color, icon: icon);
   }
 
   // ───────────────────────── actions ─────────────────────────
@@ -208,7 +221,7 @@ class _ChatScreenState extends State<ChatScreen> {
     HapticFeedback.heavyImpact();
     _service.markDoodleErased(_contact.id);
     _doodle.setEraser(false);
-    _toast('Doodle erased! Canvas unlocked — you can reply 🪄', const Color(0xFF00B894));
+    _toast('Doodle erased! Canvas unlocked — you can reply 🪄', const Color(0xFF00B894), icon: Icons.celebration_rounded);
   }
 
   Future<void> _pickPhoto() async {
@@ -824,6 +837,76 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                   numberOfParticles: 30,
                   gravity: 0.3,
+                ),
+              ),
+
+              // Top-Floating Notification Pill (Dynamic Island style - never covers bottom tools or text)
+              Positioned(
+                top: 64,
+                left: 16,
+                right: 16,
+                child: Center(
+                  child: AnimatedSlide(
+                    offset: _topToastVisible ? Offset.zero : const Offset(0, -0.6),
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: _topToastVisible ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 220),
+                      child: IgnorePointer(
+                        ignoring: !_topToastVisible,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (mounted) setState(() => _topToastVisible = false);
+                          },
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _topToastColor.withOpacity(0.95),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.25),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                                BoxShadow(
+                                  color: _topToastColor.withOpacity(0.35),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_topToastIcon != null) ...[
+                                  Icon(_topToastIcon, color: Colors.white, size: 18),
+                                  const SizedBox(width: 8),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    _topToastMessage ?? '',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
