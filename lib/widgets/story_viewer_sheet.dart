@@ -40,7 +40,7 @@ class StoryViewerSheet extends StatefulWidget {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'DoodleUp Story',
+      barrierLabel: 'DoodleUp',
       barrierColor: Colors.black.withValues(alpha: 0.9),
       pageBuilder: (ctx, anim1, anim2) {
         return StoryViewerSheet(
@@ -192,7 +192,7 @@ class _StoryViewerSheetState extends State<StoryViewerSheet> with SingleTickerPr
                           ],
                         ),
                         Text(
-                          '@${widget.senderUsername} • Status Story',
+                          '@${widget.senderUsername} • DoodleUp',
                           style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12),
                         ),
                       ],

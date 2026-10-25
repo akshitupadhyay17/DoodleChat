@@ -6,6 +6,7 @@ import 'package:doodle_chat/screens/onboarding_screen.dart';
 import 'package:doodle_chat/screens/auth_screen.dart';
 import 'package:doodle_chat/screens/home_screen.dart';
 import 'package:doodle_chat/screens/profile_screen.dart';
+import 'package:doodle_chat/screens/create_doodle_screen.dart';
 
 void main() {
   testWidgets('DoodleChatApp smoke test', (WidgetTester tester) async {
@@ -88,25 +89,13 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      FlutterErrorDetails? caughtDetails;
-      final oldOnError = FlutterError.onError;
-      FlutterError.onError = (details) {
-        caughtDetails = details;
-        oldOnError?.call(details);
-      };
-
       await tester.pumpWidget(
         const MaterialApp(
           home: HomeScreen(),
         ),
       );
       await tester.pumpAndSettle();
-      FlutterError.onError = oldOnError;
-      if (caughtDetails != null) {
-        print('=== HOME SCREEN ERROR DETAILS ===');
-        print(caughtDetails!.toString());
-        print('=================================');
-      }
+
       expect(tester.takeException(), isNull);
     });
 
@@ -125,6 +114,26 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('CreateDoodleScreen renders without overflow on ${size.width}x${size.height}', (WidgetTester tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: CreateDoodleScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreateDoodleScreen), findsOneWidget);
+      expect(find.text('DoodleUp'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
   }

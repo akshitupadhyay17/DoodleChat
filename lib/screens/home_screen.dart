@@ -704,10 +704,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Your Story',
+                    'DoodleUp',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: isDark ? const Color(0xFFA5ABC0) : const Color(0xFF5D6275),
                     ),
                   ),

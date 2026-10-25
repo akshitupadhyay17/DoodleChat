@@ -9,10 +9,16 @@ import '../services/doodle_controller.dart';
 import '../widgets/doodle_canvas.dart';
 import '../widgets/doodle_avatar.dart';
 import '../theme/app_theme.dart';
+import '../models/doodle_stroke.dart';
 
 /// Standalone doodle creator: DoodleUp!
-/// Draw freely, load a photo (compulsory to doodle on it!), then hit "Select ➜"
-/// to choose friends, groups, or post to your DoodleUp Story!
+/// Modeled after Instagram Draw & Canva tools with full creative control:
+///  - Instagram Brush Modes: Pen, Marker, Neon Glow, Highlighter, Eraser
+///  - Instagram Left Vertical Brush-Size Slider with live preview bubble
+///  - Canva Creative Tools: Shapes (Star, Heart, Arrow, Bubble, Rect, Circle),
+///    Instagram Story Text Studio with font choices and background pill highlight,
+///    Categorized Stamps & Stickers, and Photo Background overlay.
+///  - No concept of a story: everything is DoodleUp!
 class CreateDoodleScreen extends StatefulWidget {
   final String? initialGroupId;
 
@@ -25,12 +31,31 @@ class CreateDoodleScreen extends StatefulWidget {
 class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   final DoodleController _doodle = DoodleController();
   final ChatService _service = ChatService();
-  final TextEditingController _textCtrl = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  final List<Color> _colors = AppTheme.doodleColors;
+  final List<Color> _colors = const [
+    Colors.white,
+    Colors.black,
+    Color(0xFFFF2D55), // Hot Pink
+    Color(0xFFFF4081), // Electric Pink
+    Color(0xFF7928CA), // Cyber Violet
+    Color(0xFF007AFF), // Royal Blue
+    Color(0xFF00CEC9), // Sky Cyan
+    Color(0xFFA3E635), // Acid Lime
+    Color(0xFFFFC72C), // Bright Yellow
+    Color(0xFFFF9500), // Neon Orange
+    Color(0xFFFF3B30), // Ruby Red
+    Color(0xFF00B894), // Mint
+    Color(0xFFFFB8B8), // Pastel Peach
+  ];
 
-  final List<String> _quickEmojis = ['⚡️', '🔥', '✨', '💖', '🌸', '😂', '👑', '🎉', '👋', '🖤', '🚀', '💯'];
+  final List<String> _quickEmojis = [
+    '⚡️', '🔥', '✨', '💖', '🌸', '😂', '👑', '🎉',
+    '👋', '🖤', '🚀', '💯', '😍', '🥳', '😎', '🤪',
+    '🎨', '✏️', '🪄', '🌟', '🍭', '🍕', '🛸', '💎'
+  ];
+
+  bool _isDraggingBrushSlider = false;
 
   @override
   void initState() {
@@ -43,7 +68,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   @override
   void dispose() {
     _doodle.dispose();
-    _textCtrl.dispose();
     super.dispose();
   }
 
@@ -65,8 +89,8 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Photo loaded! It\'s compulsory to draw a doodle on it before sending 🎨',
-              style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+              'Photo loaded! Doodle something fun on it before sending 🎨',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
             ),
             backgroundColor: const Color(0xFFFF4081),
             behavior: SnackBarBehavior.floating,
@@ -93,7 +117,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
         SnackBar(
           content: Text(
             'Compulsory: Draw a doodle on your photo before sending! 🎨',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFFF4081),
           behavior: SnackBarBehavior.floating,
@@ -108,8 +132,8 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Draw a doodle on the canvas before hitting Send! 🎨',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+            'Draw a doodle on the canvas before hitting DoodleUp! 🎨',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFFF4081),
           behavior: SnackBarBehavior.floating,
@@ -120,6 +144,52 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
 
     HapticFeedback.mediumImpact();
     _showSelectRecipientsSheet();
+  }
+
+  void _showClearConfirm() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            'Clear Canvas?',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+          content: Text(
+            'This will clear all strokes, texts, shapes, and photo from your DoodleUp.',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF8A90A6)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _doodle.clear();
+                Navigator.pop(ctx);
+                HapticFeedback.lightImpact();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF3B30),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Clear All',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showCreateGroupDialog(BuildContext sheetCtx) {
@@ -156,7 +226,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text('Select Emoji Icon:', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('Select Emoji Icon:', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -179,10 +249,10 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 14),
-                    Text('Add Friends:', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('Add Friends:', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
                     if (friends.isEmpty)
-                      Text('No friends to add yet. You will be the first member!', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey))
+                      Text('No friends to add yet. You will be the first member!', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey))
                     else
                       ...friends.map((f) {
                         final isSelected = selectedUsernames.contains(f.username);
@@ -190,7 +260,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           value: isSelected,
                           dense: true,
                           contentPadding: EdgeInsets.zero,
-                          title: Text(f.name, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600)),
+                          title: Text(f.name, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
                           subtitle: Text('@${f.username}', style: const TextStyle(fontSize: 11)),
                           onChanged: (val) {
                             setDlgState(() {
@@ -246,7 +316,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
     if (widget.initialGroupId != null && allGroups.any((g) => g.id == widget.initialGroupId)) {
       selectedGroupIds.add(widget.initialGroupId!);
     }
-    bool postToStory = false;
+    bool postToDoodleUp = false;
     String searchQuery = '';
     final searchCtrl = TextEditingController();
 
@@ -269,7 +339,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
               return g.name.toLowerCase().contains(query);
             }).toList();
 
-            final totalRecipients = selectedContactIds.length + selectedGroupIds.length + (postToStory ? 1 : 0);
+            final totalRecipients = selectedContactIds.length + selectedGroupIds.length + (postToDoodleUp ? 1 : 0);
 
             final allFilteredSelected = filteredFriends.isNotEmpty &&
                 filteredFriends.every((f) => selectedContactIds.contains(f.id));
@@ -327,17 +397,17 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Select Contacts',
-                                    style: GoogleFonts.gaegu(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
+                                    'DoodleUp Recipients',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
                                       color: isDark ? Colors.white : const Color(0xFF1E1E26),
                                     ),
                                   ),
                                   Text(
-                                    'Select friends or groups to send your DoodleUp',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
+                                    'Broadcast to DoodleUp or send directly to friends',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
                                       color: Colors.grey,
                                     ),
                                   ),
@@ -358,18 +428,17 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF282834) : const Color(0xFFF1F2F6),
+                          color: isDark ? const Color(0xFF282834) : const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: TextField(
                           controller: searchCtrl,
-                          onChanged: (val) {
-                            setSheetState(() => searchQuery = val);
-                          },
+                          onChanged: (val) => setSheetState(() => searchQuery = val),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 14),
                           decoration: InputDecoration(
-                            hintText: 'Search contacts or @username...',
-                            hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
-                            prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+                            hintText: 'Search friends or groups...',
+                            hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey),
+                            prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Colors.grey),
                             suffixIcon: searchQuery.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear_rounded, size: 18),
@@ -386,14 +455,13 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       ),
                     ),
 
-                    // Quick Actions Row
+                    // Quick Select Buttons
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                       child: Row(
                         children: [
-                          // Select All Friends Chip
                           if (filteredFriends.isNotEmpty)
-                            GestureDetector(
+                            InkWell(
                               onTap: () {
                                 HapticFeedback.selectionClick();
                                 setSheetState(() {
@@ -408,59 +476,47 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   }
                                 });
                               },
+                              borderRadius: BorderRadius.circular(10),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: allFilteredSelected
-                                      ? const Color(0xFFFFC72C).withValues(alpha: 0.25)
-                                      : (isDark ? const Color(0xFF282834) : const Color(0xFFF1F2F6)),
+                                      ? const Color(0xFFFFC72C).withValues(alpha: 0.2)
+                                      : Colors.grey.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
                                     color: allFilteredSelected ? const Color(0xFFFFC72C) : Colors.transparent,
-                                    width: 1.5,
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      allFilteredSelected ? Icons.check_circle_rounded : Icons.checklist_rounded,
-                                      size: 15,
-                                      color: allFilteredSelected ? const Color(0xFFFFC72C) : Colors.grey,
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      allFilteredSelected ? 'Deselect All Contacts' : 'Select All Contacts',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: allFilteredSelected
-                                            ? (isDark ? Colors.white : const Color(0xFF1E1E26))
-                                            : Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  allFilteredSelected ? 'Deselect All Friends' : 'Select All Friends',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: allFilteredSelected ? const Color(0xFFFFC72C) : Colors.grey,
+                                  ),
                                 ),
                               ),
                             ),
                           const Spacer(),
-                          // Create Group button
-                          GestureDetector(
+                          InkWell(
                             onTap: () => _showCreateGroupDialog(ctx),
+                            borderRadius: BorderRadius.circular(10),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.group_add_rounded, size: 14, color: Color(0xFF6C5CE7)),
+                                  const Icon(Icons.add_rounded, size: 14, color: Color(0xFF6C5CE7)),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '+ New Group',
-                                    style: GoogleFonts.outfit(
+                                    'New Group',
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFF6C5CE7),
@@ -474,18 +530,18 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       ),
                     ),
 
-                    const Divider(height: 16),
+                    const SizedBox(height: 6),
 
-                    // Scrollable List of Recipients
+                    // Scrollable List: DoodleUp Broadcast, Contacts, Groups
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         children: [
-                          // 1. DoodleUp Story Toggle Card
+                          // 1. DoodleUp Broadcast Card (No story!)
                           GestureDetector(
                             onTap: () {
                               HapticFeedback.selectionClick();
-                              setSheetState(() => postToStory = !postToStory);
+                              setSheetState(() => postToDoodleUp = !postToDoodleUp);
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
@@ -493,10 +549,10 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               margin: const EdgeInsets.only(bottom: 14),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: postToStory
+                                  colors: postToDoodleUp
                                       ? [
                                           const Color(0xFFFFC72C).withValues(alpha: 0.25),
-                                          const Color(0xFFFF4081).withValues(alpha: 0.15),
+                                          const Color(0xFFFF4081).withValues(alpha: 0.18),
                                         ]
                                       : [
                                           isDark ? const Color(0xFF282834) : const Color(0xFFF7F8FA),
@@ -505,8 +561,8 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: postToStory ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.25),
-                                  width: postToStory ? 2 : 1,
+                                  color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.25),
+                                  width: postToDoodleUp ? 2 : 1,
                                 ),
                               ),
                               child: Row(
@@ -526,7 +582,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                         ],
                                       ),
                                     ),
-                                    child: const Center(child: Text('🌟', style: TextStyle(fontSize: 18))),
+                                    child: const Center(child: Text('🚀', style: TextStyle(fontSize: 18))),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -534,15 +590,15 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'My Story',
+                                          'DoodleUp Feed',
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.w700,
+                                            fontWeight: FontWeight.w800,
                                             color: isDark ? Colors.white : const Color(0xFF0E1017),
                                           ),
                                         ),
                                         Text(
-                                          'Shared to your story ring for 24h',
+                                          'Broadcast to all friends on DoodleUp',
                                           style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF8A90A6)),
                                         ),
                                       ],
@@ -554,13 +610,13 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                     height: 24,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: postToStory ? const Color(0xFFFFC72C) : Colors.transparent,
+                                      color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.transparent,
                                       border: Border.all(
-                                        color: postToStory ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.5),
+                                        color: postToDoodleUp ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.5),
                                         width: 2,
                                       ),
                                     ),
-                                    child: postToStory
+                                    child: postToDoodleUp
                                         ? const Icon(Icons.check_rounded, size: 16, color: Colors.black)
                                         : null,
                                   ),
@@ -575,7 +631,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             children: [
                               Text(
                                 'CONTACTS (${filteredFriends.length})',
-                                style: GoogleFonts.outfit(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.1,
@@ -585,7 +641,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               if (selectedContactIds.isNotEmpty)
                                 Text(
                                   '${selectedContactIds.length} selected',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: const Color(0xFFFFC72C),
@@ -601,7 +657,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               child: Center(
                                 child: Text(
                                   'No approved friends yet. Add friends first!',
-                                  style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
                                 ),
                               ),
                             )
@@ -611,14 +667,13 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               child: Center(
                                 child: Text(
                                   'No friends match "$searchQuery"',
-                                  style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
                                 ),
                               ),
                             )
                           else
                             ...filteredFriends.map((friend) {
                               final isSelected = selectedContactIds.contains(friend.id);
-                              final hasPending = friend.doodleStatus == DoodleChatStatus.sentWaitingForErase;
 
                               return InkWell(
                                 onTap: () {
@@ -648,84 +703,49 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      // Checkbox
-                                      AnimatedContainer(
-                                        duration: const Duration(milliseconds: 160),
-                                        width: 24,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isSelected ? const Color(0xFFFFC72C) : Colors.transparent,
-                                          border: Border.all(
-                                            color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.45),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: isSelected
-                                            ? const Icon(Icons.check_rounded, size: 16, color: Colors.black)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 12),
-
-                                      // Avatar
                                       DoodleAvatar(
                                         emoji: friend.avatarEmoji,
                                         color: friend.avatarColor,
+                                        photoBase64: friend.avatarPhotoBase64,
                                         radius: 20,
                                         displayName: friend.name,
                                         username: friend.username,
                                       ),
-                                      const SizedBox(width: 12),
-
-                                      // Name & username
+                                      const SizedBox(width: 10),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Row(
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    friend.name,
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text('🔥 ${friend.streakCount}', style: const TextStyle(fontSize: 11, color: Color(0xFFFF7675))),
-                                              ],
+                                            Text(
+                                              friend.name,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                                              ),
                                             ),
-                                            Row(
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    '@${friend.username}',
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
-                                                  ),
-                                                ),
-                                                if (hasPending) ...[
-                                                  const SizedBox(width: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.amber.withValues(alpha: 0.15),
-                                                      borderRadius: BorderRadius.circular(6),
-                                                    ),
-                                                    child: Text(
-                                                      '⏳ Pending erase',
-                                                      style: GoogleFonts.outfit(fontSize: 9, color: Colors.amber.shade700, fontWeight: FontWeight.bold),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
+                                            Text(
+                                              '@${friend.username}',
+                                              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey),
                                             ),
                                           ],
                                         ),
+                                      ),
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 160),
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isSelected ? const Color(0xFFFFC72C) : Colors.transparent,
+                                          border: Border.all(
+                                            color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.4),
+                                            width: 1.8,
+                                          ),
+                                        ),
+                                        child: isSelected
+                                            ? const Icon(Icons.check_rounded, size: 14, color: Colors.black)
+                                            : null,
                                       ),
                                     ],
                                   ),
@@ -733,7 +753,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               );
                             }),
 
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
 
                           // 3. GROUPS SECTION
                           Row(
@@ -741,7 +761,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             children: [
                               Text(
                                 'GROUPS (${filteredGroups.length})',
-                                style: GoogleFonts.outfit(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.1,
@@ -751,7 +771,7 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               if (selectedGroupIds.isNotEmpty)
                                 Text(
                                   '${selectedGroupIds.length} selected',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: const Color(0xFF6C5CE7),
@@ -763,32 +783,36 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
 
                           if (allGroups.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                'No groups yet. Tap "+ New Group" above to create one!',
-                                style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Center(
+                                child: Text(
+                                  'No groups yet. Tap "+ New Group" above to start one!',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
+                                ),
                               ),
                             )
                           else if (filteredGroups.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                'No groups match "$searchQuery"',
-                                style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Center(
+                                child: Text(
+                                  'No groups match "$searchQuery"',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
+                                ),
                               ),
                             )
                           else
-                            ...filteredGroups.map((grp) {
-                              final isSelected = selectedGroupIds.contains(grp.id);
+                            ...filteredGroups.map((group) {
+                              final isSelected = selectedGroupIds.contains(group.id);
 
                               return InkWell(
                                 onTap: () {
                                   HapticFeedback.selectionClick();
                                   setSheetState(() {
                                     if (isSelected) {
-                                      selectedGroupIds.remove(grp.id);
+                                      selectedGroupIds.remove(group.id);
                                     } else {
-                                      selectedGroupIds.add(grp.id);
+                                      selectedGroupIds.add(group.id);
                                     }
                                   });
                                 },
@@ -809,73 +833,58 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      // Checkbox
-                                      AnimatedContainer(
-                                        duration: const Duration(milliseconds: 160),
-                                        width: 24,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isSelected ? const Color(0xFF6C5CE7) : Colors.transparent,
-                                          border: Border.all(
-                                            color: isSelected ? const Color(0xFF6C5CE7) : Colors.grey.withValues(alpha: 0.45),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: isSelected
-                                            ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 12),
-
-                                      // Avatar
                                       Container(
-                                        width: 40,
-                                        height: 40,
+                                        width: 38,
+                                        height: 38,
                                         decoration: BoxDecoration(
-                                          color: grp.color.withValues(alpha: 0.25),
+                                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.2),
                                           shape: BoxShape.circle,
-                                          border: Border.all(color: grp.color, width: 2),
                                         ),
-                                        child: Center(child: Text(grp.avatarEmoji, style: const TextStyle(fontSize: 18))),
+                                        child: Center(
+                                          child: Text(group.avatarEmoji, style: const TextStyle(fontSize: 20)),
+                                        ),
                                       ),
-                                      const SizedBox(width: 12),
-
-                                      // Name & details
+                                      const SizedBox(width: 10),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Row(
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    grp.name,
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: isDark ? Colors.white : const Color(0xFF1E1E26),
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text('🔥 ${grp.streakCount}', style: const TextStyle(fontSize: 11, color: Color(0xFFFF7675))),
-                                              ],
+                                            Text(
+                                              group.name,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark ? Colors.white : const Color(0xFF1E1E26),
+                                              ),
                                             ),
                                             Text(
-                                              '${grp.memberUsernames.length} members',
-                                              style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                                              '${group.memberUsernames.length} members',
+                                              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey),
                                             ),
                                           ],
                                         ),
+                                      ),
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 160),
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isSelected ? const Color(0xFF6C5CE7) : Colors.transparent,
+                                          border: Border.all(
+                                            color: isSelected ? const Color(0xFF6C5CE7) : Colors.grey.withValues(alpha: 0.4),
+                                            width: 1.8,
+                                          ),
+                                        ),
+                                        child: isSelected
+                                            ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                                            : null,
                                       ),
                                     ],
                                   ),
                                 ),
                               );
                             }),
-
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -918,27 +927,29 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                     }
                                   }
 
-                                  // Post to story if chosen
-                                  if (postToStory) {
-                                    _service.postDoodleUpStory(data);
+                                  // Broadcast to DoodleUp if chosen
+                                  if (postToDoodleUp) {
+                                    _service.postDoodleUp(data);
                                   }
 
                                   HapticFeedback.heavyImpact();
                                   Navigator.pop(ctx); // Close recipients sheet
                                   Navigator.pop(context); // Close DoodleUp back to home
 
-                                  final message = StringBuffer('DoodleUp sent to $sentCount recipient${sentCount == 1 ? '' : 's'}');
-                                  if (postToStory) {
-                                    message.write(' & posted to your Story 🌟');
+                                  final message = StringBuffer();
+                                  if (sentCount > 0 && postToDoodleUp) {
+                                    message.write('Sent to $sentCount contact${sentCount == 1 ? '' : 's'} & posted to DoodleUp! 🚀');
+                                  } else if (postToDoodleUp) {
+                                    message.write('Posted to DoodleUp! 🚀');
                                   } else {
-                                    message.write('! 🚀');
+                                    message.write('Doodle sent to $sentCount recipient${sentCount == 1 ? '' : 's'}! 🚀');
                                   }
 
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
                                         message.toString(),
-                                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
                                       ),
                                       backgroundColor: const Color(0xFF00B894),
                                       behavior: SnackBarBehavior.floating,
@@ -957,16 +968,18 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.send_rounded,
+                                Icons.rocket_launch_rounded,
                                 size: 18,
                                 color: totalRecipients > 0 ? const Color(0xFF1E1E26) : Colors.grey,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 totalRecipients == 0
-                                    ? 'Select contacts to send'
-                                    : 'Send to $totalRecipients recipient${totalRecipients > 1 ? 's' : ''} 🚀',
-                                style: GoogleFonts.outfit(
+                                    ? 'Select contacts or DoodleUp'
+                                    : (postToDoodleUp && selectedContactIds.isEmpty && selectedGroupIds.isEmpty)
+                                        ? 'Post to DoodleUp 🚀'
+                                        : 'DoodleUp ($totalRecipients recipient${totalRecipients > 1 ? 's' : ''}) 🚀',
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: totalRecipients > 0 ? const Color(0xFF1E1E26) : Colors.grey,
@@ -986,6 +999,8 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
       },
     );
   }
+
+  // ───────────────────────── Canva & Instagram Tool Sheets ─────────────────────────
 
   void _showEmojiSheet() {
     showModalBottomSheet(
@@ -1014,23 +1029,24 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                   children: _quickEmojis.map((e) {
                     return GestureDetector(
                       onTap: () {
-                        setState(() => _doodle.stampEmoji = e);
+                        setState(() => _doodle.setStampEmoji(e));
                         Navigator.pop(ctx);
                         HapticFeedback.selectionClick();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Tap anywhere on the canvas to stamp $e!'),
+                            content: Text('Tap anywhere on canvas to stamp $e! ✨'),
                             duration: const Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
                           ),
                         );
                       },
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: Colors.grey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Text(e, style: const TextStyle(fontSize: 32)),
+                        child: Text(e, style: const TextStyle(fontSize: 28)),
                       ),
                     );
                   }).toList(),
@@ -1043,44 +1059,409 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
     );
   }
 
-  void _showTextToDoodleDialog() {
-    _textCtrl.clear();
-    showDialog(
+  void _showShapesSheet() {
+    final shapes = [
+      {'id': 'star', 'name': 'Star', 'icon': '⭐'},
+      {'id': 'heart', 'name': 'Heart', 'icon': '💖'},
+      {'id': 'circle', 'name': 'Circle', 'icon': '⭕'},
+      {'id': 'rect', 'name': 'Box', 'icon': '🔲'},
+      {'id': 'arrow', 'name': 'Arrow', 'icon': '➔'},
+      {'id': 'bubble', 'name': 'Bubble', 'icon': '💬'},
+    ];
+
+    showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Add Text', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800)),
-          content: TextField(
-            controller: _textCtrl,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: 'Type your message...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('🔷', style: TextStyle(fontSize: 20)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Canva Shapes',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap any shape to stamp onto your canvas in active brush style',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: shapes.map((s) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _doodle.addShape(s['id']!);
+                        HapticFeedback.mediumImpact();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Added ${s['name']} shape to canvas! ✨'),
+                            duration: const Duration(seconds: 1),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: _doodle.color.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: _doodle.color.withOpacity(0.4)),
+                            ),
+                            child: Center(
+                              child: Text(s['icon']!, style: const TextStyle(fontSize: 22)),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            s['name']!,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+              ],
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final txt = _textCtrl.text.trim();
-                if (txt.isNotEmpty) {
-                  _doodle.addText(txt);
-                }
-                Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.electricPink,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text('Add Text', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-            ),
-          ],
         );
       },
     );
   }
+
+  void _showTextStudio() {
+    final textCtrl = TextEditingController();
+    String selectedFont = 'PatrickHand';
+    bool hasBackground = false;
+    Color textColor = _doodle.color;
+
+    final fonts = [
+      {'id': 'PatrickHand', 'label': 'Doodle'},
+      {'id': 'Outfit', 'label': 'Clean Sans'},
+      {'id': 'PlusJakartaSans', 'label': 'Bold'},
+      {'id': 'Caveat', 'label': 'Script'},
+      {'id': 'Gaegu', 'label': 'Playful'},
+      {'id': 'Neon', 'label': 'Neon Glow'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('🔤', style: TextStyle(fontSize: 20)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Story & Canva Text',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800),
+                            ),
+                          ],
+                        ),
+                        // Instagram Text Highlight Pill Toggle ([A])
+                        IconButton(
+                          tooltip: 'Toggle text background pill',
+                          icon: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: hasBackground ? textColor : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: textColor, width: 1.5),
+                            ),
+                            child: Text(
+                              'A',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                color: hasBackground
+                                    ? (textColor.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+                                    : textColor,
+                              ),
+                            ),
+                          ),
+                          onPressed: () {
+                            setDlgState(() => hasBackground = !hasBackground);
+                            HapticFeedback.selectionClick();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Input TextField
+                    TextField(
+                      controller: textCtrl,
+                      autofocus: true,
+                      onChanged: (val) => setDlgState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'Type your message...',
+                        hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF282834) : const Color(0xFFF3F4F6),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Live Preview Container
+                    if (textCtrl.text.isNotEmpty)
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: hasBackground ? textColor : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            textCtrl.text,
+                            style: doodleTextStyle(
+                              selectedFont,
+                              24,
+                              hasBackground
+                                  ? (textColor.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+                                  : textColor,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 14),
+
+                    // Font Switcher Chips
+                    Text(
+                      'FONTS',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 38,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: fonts.map((f) {
+                          final isSelected = selectedFont == f['id'];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                f['label']!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                  color: isSelected ? Colors.black : (isDark ? Colors.white : Colors.black),
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: const Color(0xFFFFC72C),
+                              backgroundColor: isDark ? const Color(0xFF282834) : const Color(0xFFF0F0F2),
+                              onSelected: (_) {
+                                setDlgState(() => selectedFont = f['id']!);
+                                HapticFeedback.selectionClick();
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Color Picker Row for Text
+                    Text(
+                      'COLOR',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: _colors.map((c) {
+                          final isSel = textColor == c;
+                          return GestureDetector(
+                            onTap: () {
+                              setDlgState(() => textColor = c);
+                              setState(() => _doodle.setColor(c));
+                              HapticFeedback.selectionClick();
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: c,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSel ? const Color(0xFFFFC72C) : Colors.grey.withOpacity(0.3),
+                                  width: isSel ? 3 : 1,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Add Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: textCtrl.text.trim().isEmpty
+                            ? null
+                            : () {
+                                final txt = textCtrl.text.trim();
+                                _doodle.addText(txt, selectedFont, hasBackground);
+                                Navigator.pop(ctx);
+                                HapticFeedback.mediumImpact();
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.electricPink,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text(
+                          'Add Text to Canvas ✨',
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showColorPickerModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Color Palette', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800)),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    ..._colors,
+                    const Color(0xFF6C5CE7),
+                    const Color(0xFF0984E3),
+                    const Color(0xFF00CEC9),
+                    const Color(0xFF00B894),
+                    const Color(0xFFE17055),
+                    const Color(0xFFD63031),
+                    const Color(0xFFE84393),
+                    const Color(0xFF2D3436),
+                    const Color(0xFFFDCB6E),
+                    const Color(0xFF55EFC4),
+                  ].map((c) {
+                    final isSel = _doodle.color == c;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _doodle.setColor(c);
+                        });
+                        Navigator.pop(ctx);
+                        HapticFeedback.selectionClick();
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSel ? const Color(0xFFFFC72C) : Colors.grey.withOpacity(0.3),
+                            width: isSel ? 3.5 : 1,
+                          ),
+                          boxShadow: isSel
+                              ? [
+                                  BoxShadow(
+                                    color: c.withOpacity(0.5),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ───────────────────────── Main Build ─────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -1088,77 +1469,117 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
     final hasPhoto = _doodle.backgroundPhoto != null && _doodle.backgroundPhoto!.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF16161D) : const Color(0xFFF9F9FB),
+      backgroundColor: isDark ? const Color(0xFF101015) : const Color(0xFFF6F7FB),
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar: Back, Title "studio", Clear, and "Send ➜"
+            // Top Bar: Back, Undo, Redo, Clear, "DoodleUp 🚀"
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: isDark ? Colors.white : const Color(0xFF0E1017)),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [AppTheme.electricPink, AppTheme.cyberViolet]),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'canvas',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                            color: Colors.white,
-                          ),
-                        ),
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 18,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
                       ),
-                    ],
+                    ),
                   ),
+
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFF8A90A6)),
-                    tooltip: 'Clear canvas',
-                    onPressed: () {
-                      _doodle.clear();
-                      HapticFeedback.lightImpact();
-                    },
+
+                  // Undo Button
+                  InkWell(
+                    onTap: _doodle.canUndo
+                        ? () {
+                            _doodle.undo();
+                            HapticFeedback.lightImpact();
+                          }
+                        : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.undo_rounded,
+                        size: 20,
+                        color: _doodle.canUndo ? (isDark ? Colors.white : const Color(0xFF0E1017)) : Colors.grey.withOpacity(0.3),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 2),
+
+                  // Redo Button
+                  InkWell(
+                    onTap: _doodle.canRedo
+                        ? () {
+                            _doodle.redo();
+                            HapticFeedback.lightImpact();
+                          }
+                        : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.redo_rounded,
+                        size: 20,
+                        color: _doodle.canRedo ? (isDark ? Colors.white : const Color(0xFF0E1017)) : Colors.grey.withOpacity(0.3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+
+                  // Clear Canvas Button
+                  InkWell(
+                    onTap: _showClearConfirm,
+                    borderRadius: BorderRadius.circular(8),
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 20,
+                        color: Color(0xFF8A90A6),
+                      ),
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Primary DoodleUp CTA
                   Container(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [AppTheme.electricPink, Color(0xFFFF3B30)],
+                        colors: [AppTheme.electricPink, AppTheme.cyberViolet],
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
                           color: AppTheme.electricPink.withOpacity(0.35),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: ElevatedButton.icon(
-                      onPressed: _onSendTapped,
-                      icon: const Icon(Icons.send_rounded, size: 14),
-                      label: Text(
-                        'Send',
-                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    child: InkWell(
+                      onTap: _onSendTapped,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.rocket_launch_rounded, size: 13, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              'DoodleUp',
+                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1166,7 +1587,86 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
               ),
             ),
 
-            // If a photo background is loaded, show compulsory badge
+            // Instagram Draw Segmented Brush Shelf (Horizontally Scrollable / Overflow Proof)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              child: Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                  borderRadius: BorderRadius.circular(19),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    shrinkWrap: true,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      _buildBrushModePill(
+                        label: 'Pen',
+                        icon: Icons.edit_rounded,
+                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.pen,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _doodle.setBrushType(DoodleBrushType.pen));
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      _buildBrushModePill(
+                        label: 'Marker',
+                        icon: Icons.brush_rounded,
+                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.marker,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _doodle.setBrushType(DoodleBrushType.marker));
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      _buildBrushModePill(
+                        label: 'Neon',
+                        icon: Icons.auto_awesome_rounded,
+                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.neon,
+                        isSpecialGlow: true,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _doodle.setBrushType(DoodleBrushType.neon));
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      _buildBrushModePill(
+                        label: 'Highlighter',
+                        icon: Icons.highlight_rounded,
+                        isActive: !_doodle.eraser && _doodle.brushType == DoodleBrushType.highlighter,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _doodle.setBrushType(DoodleBrushType.highlighter));
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      _buildBrushModePill(
+                        label: 'Eraser',
+                        icon: Icons.cleaning_services_rounded,
+                        isActive: _doodle.eraser,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _doodle.setEraser(!_doodle.eraser));
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // If photo loaded, show compulsory badge
             if (hasPhoto)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -1183,19 +1683,17 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Photo loaded! Compulsory to doodle on it before sending 🎨',
-                          style: GoogleFonts.outfit(
+                          'Photo loaded! Doodle on it before sending 🎨',
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: const Color(0xFFFF4081),
                           ),
                         ),
                       ),
                       GestureDetector(
                         onTap: () {
-                          setState(() {
-                            _doodle.setBackgroundPhoto(null);
-                          });
+                          setState(() => _doodle.setBackgroundPhoto(null));
                           HapticFeedback.lightImpact();
                         },
                         child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFFFF4081)),
@@ -1205,132 +1703,407 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                 ),
               ),
 
-            // Canvas Surface
+            // Canvas Surface with Instagram Left Vertical Brush Slider Overlay
             Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+              child: Stack(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E1E26) : Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: DoodleCanvas(controller: _doodle),
-                ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: DoodleCanvas(controller: _doodle),
+                    ),
+                  ),
+
+                  // Instagram Left Vertical Brush-Size Slider
+                  Positioned(
+                    left: 24,
+                    top: 40,
+                    bottom: 40,
+                    child: _buildInstagramVerticalBrushSlider(isDark),
+                  ),
+                ],
               ),
             ),
 
-            // Bottom Toolbars: Colors & Action Buttons
+            // Bottom Floating Controls: Colors & Canva Elements Bar
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
               child: Column(
                 children: [
-                  // Color Palette Row
+                  // Row 1: Instagram Color Palette with Palette Picker Icon
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: _colors.map((c) {
-                      final isSelected = _doodle.color == c && !_doodle.eraser;
-                      return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            _doodle.setEraser(false);
-                            _doodle.setColor(c);
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          width: isSelected ? 34 : 28,
-                          height: isSelected ? 34 : 28,
-                          decoration: BoxDecoration(
-                            color: c,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withValues(alpha: 0.3),
-                              width: isSelected ? 3 : 1.5,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: c.withValues(alpha: 0.5),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    )
-                                  ]
-                                : null,
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 38,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: _colors.map((c) {
+                              final isSelected = _doodle.color == c && !_doodle.eraser;
+                              return GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  setState(() {
+                                    _doodle.setEraser(false);
+                                    _doodle.setColor(c);
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  width: isSelected ? 34 : 26,
+                                  height: isSelected ? 34 : 26,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected ? const Color(0xFFFFC72C) : Colors.grey.withOpacity(0.3),
+                                      width: isSelected ? 3 : 1.5,
+                                    ),
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: c.withOpacity(0.55),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Actions: Photo Picker, Brush Size, Eraser, Emoji Stamp, Text-to-doodle
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      // Photo Background Picker
-                      IconButton(
-                        icon: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF7675), size: 26),
-                        tooltip: 'Add photo background',
-                        onPressed: _pickPhoto,
                       ),
 
-                      // Brush Size Toggle
+                      // Color Palette Picker button
                       IconButton(
-                        icon: const Icon(Icons.line_weight_rounded),
-                        tooltip: 'Brush size',
-                        onPressed: () {
-                          final current = _doodle.brushPx;
-                          final next = current <= 4.0 ? 8.0 : (current <= 10.0 ? 18.0 : 4.0);
-                          setState(() => _doodle.brushPx = next);
-                          HapticFeedback.selectionClick();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Brush size: ${next <= 4 ? 'Fine' : (next <= 10 ? 'Medium' : 'Thick')} 🖌️'),
-                              duration: const Duration(milliseconds: 900),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
-
-                      // Eraser Toggle
-                      IconButton(
-                        icon: Icon(
-                          Icons.cleaning_services_rounded,
-                          color: _doodle.eraser ? const Color(0xFFFF4081) : Colors.grey,
-                        ),
-                        tooltip: 'Eraser',
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _doodle.setEraser(!_doodle.eraser));
-                        },
-                      ),
-
-                      // Emoji Stamp
-                      IconButton(
-                        icon: const Icon(Icons.emoji_emotions_outlined, color: Color(0xFFFFC72C)),
-                        tooltip: 'Add emoji stamp',
-                        onPressed: _showEmojiSheet,
-                      ),
-
-                      // Handwriting Text
-                      IconButton(
-                        icon: const Icon(Icons.text_fields_rounded, color: Color(0xFF00CEC9)),
-                        tooltip: 'Add text',
-                        onPressed: _showTextToDoodleDialog,
+                        icon: const Icon(Icons.palette_rounded, size: 22, color: AppTheme.electricPink),
+                        tooltip: 'More colors',
+                        onPressed: _showColorPickerModal,
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 8),
+
+                  // Row 2: Canva Creative Bar (Photo, Text Studio, Shapes, Stickers)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Photo
+                        Expanded(
+                          child: _buildBottomActionButton(
+                            icon: Icons.add_photo_alternate_rounded,
+                            label: 'Photo',
+                            color: const Color(0xFFFF7675),
+                            onTap: _pickPhoto,
+                          ),
+                        ),
+
+                        // Canva / Story Text Studio
+                        Expanded(
+                          child: _buildBottomActionButton(
+                            icon: Icons.text_fields_rounded,
+                            label: 'Text',
+                            color: const Color(0xFF00CEC9),
+                            onTap: _showTextStudio,
+                          ),
+                        ),
+
+                        // Canva Shapes
+                        Expanded(
+                          child: _buildBottomActionButton(
+                            icon: Icons.interests_rounded,
+                            label: 'Shapes',
+                            color: const Color(0xFF6C5CE7),
+                            onTap: _showShapesSheet,
+                          ),
+                        ),
+
+                        // Stickers & Stamps
+                        Expanded(
+                          child: _buildBottomActionButton(
+                            icon: Icons.emoji_emotions_rounded,
+                            label: 'Stickers',
+                            color: const Color(0xFFFFC72C),
+                            onTap: _showEmojiSheet,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────── Helper Widgets ─────────────────────────
+
+  Widget _buildBrushModePill({
+    required String label,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+    bool isSpecialGlow = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? (isSpecialGlow
+                  ? const Color(0xFFFF4081)
+                  : const Color(0xFFFFC72C))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: (isSpecialGlow ? const Color(0xFFFF4081) : const Color(0xFFFFC72C)).withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isActive ? Colors.black : Colors.grey,
+            ),
+            if (isActive) ...[
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInstagramVerticalBrushSlider(bool isDark) {
+    // 2.0 to 38.0 range
+    final minSize = 2.0;
+    final maxSize = 38.0;
+    final fraction = ((_doodle.brushPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalHeight = (constraints.maxHeight * 0.55).clamp(140.0, 220.0);
+
+        return Center(
+          child: SizedBox(
+            width: 80,
+            height: totalHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.centerLeft,
+              children: [
+                // Slider Track Capsule
+                GestureDetector(
+                  onVerticalDragStart: (_) => setState(() => _isDraggingBrushSlider = true),
+                  onVerticalDragEnd: (_) => setState(() => _isDraggingBrushSlider = false),
+                  onVerticalDragCancel: () => setState(() => _isDraggingBrushSlider = false),
+                  onVerticalDragUpdate: (details) {
+                    final box = context.findRenderObject() as RenderBox?;
+                    if (box == null) return;
+                    final local = box.globalToLocal(details.globalPosition);
+                    // dragging up increases size
+                    final rawFraction = 1.0 - (local.dy / totalHeight);
+                    final clamped = rawFraction.clamp(0.0, 1.0);
+                    final newSize = minSize + clamped * (maxSize - minSize);
+                    setState(() {
+                      _doodle.setBrush(newSize);
+                    });
+                  },
+                  child: Container(
+                    width: 28,
+                    height: totalHeight,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black.withOpacity(0.45) : Colors.white.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        // Inner fill
+                        Container(
+                          width: 6,
+                          height: totalHeight * fraction,
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            color: _doodle.color,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        // Slider Thumb
+                        Positioned(
+                          bottom: (totalHeight - 24) * fraction,
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.25),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: _doodle.color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Live Preview Bubble (Pops out to the right when dragging)
+                if (_isDraggingBrushSlider)
+                  Positioned(
+                    left: 36,
+                    bottom: (totalHeight - 34) * fraction - 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(2, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Exact brush preview circle
+                          Container(
+                            width: _doodle.brushPx.clamp(6.0, 32.0),
+                            height: _doodle.brushPx.clamp(6.0, 32.0),
+                            decoration: BoxDecoration(
+                              color: _doodle.color,
+                              shape: BoxShape.circle,
+                              boxShadow: _doodle.brushType == DoodleBrushType.neon
+                                  ? [
+                                      BoxShadow(
+                                        color: _doodle.color.withOpacity(0.8),
+                                        blurRadius: 8,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_doodle.brushPx.round()}px',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: color,
               ),
             ),
           ],

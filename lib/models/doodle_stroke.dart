@@ -9,6 +9,13 @@ const double kVirtualWidth = 1000.0;
 
 enum DoodleElementType { stroke, text, emoji }
 
+enum DoodleBrushType {
+  pen,         // Regular smooth freehand pen
+  marker,      // Chisel / bold semi-translucent marker
+  neon,        // Glowing neon brush (Instagram signature!)
+  highlighter, // Wide translucent layering
+}
+
 double _r(double v) => (v * 10).roundToDouble() / 10;
 
 class DoodleStroke {
@@ -18,6 +25,7 @@ class DoodleStroke {
   /// Brush diameter in virtual units.
   final double size;
   final bool isEraser;
+  final DoodleBrushType brushType;
 
   Path? _path;
   double? _length;
@@ -27,6 +35,7 @@ class DoodleStroke {
     required this.color,
     this.size = 10.0,
     this.isEraser = false,
+    this.brushType = DoodleBrushType.pen,
   });
 
   /// Backwards compatible alias.
@@ -49,12 +58,13 @@ class DoodleStroke {
     return _length = total;
   }
 
-  DoodleStroke copyWith({List<Offset>? points}) {
+  DoodleStroke copyWith({List<Offset>? points, DoodleBrushType? brushType}) {
     return DoodleStroke(
       points: points ?? List.from(this.points),
       color: color,
       size: size,
       isEraser: isEraser,
+      brushType: brushType ?? this.brushType,
     );
   }
 
@@ -62,6 +72,7 @@ class DoodleStroke {
         'p': [for (final p in points) ...[_r(p.dx), _r(p.dy)]],
         'c': color.toARGB32(),
         's': _r(size),
+        if (brushType != DoodleBrushType.pen) 'b': brushType.index,
       };
 
   factory DoodleStroke.fromJson(Map<String, dynamic> json) {
@@ -70,10 +81,15 @@ class DoodleStroke {
     for (int i = 0; i + 1 < flat.length; i += 2) {
       pts.add(Offset((flat[i] as num).toDouble(), (flat[i + 1] as num).toDouble()));
     }
+    final bIdx = (json['b'] as num?)?.toInt() ?? 0;
+    final bType = (bIdx >= 0 && bIdx < DoodleBrushType.values.length)
+        ? DoodleBrushType.values[bIdx]
+        : DoodleBrushType.pen;
     return DoodleStroke(
       points: pts,
       color: Color((json['c'] as num?)?.toInt() ?? 0xFFFFC72C),
       size: (json['s'] as num?)?.toDouble() ?? 10.0,
+      brushType: bType,
     );
   }
 }
@@ -166,6 +182,32 @@ TextStyle doodleTextStyle(String fontStyle, double fontSize, Color color) {
         color: color,
         shadows: shadows,
       ).copyWith(fontFamilyFallback: emojiFallbacks);
+    case 'Outfit':
+      return GoogleFonts.outfit(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w800,
+        color: color,
+        shadows: shadows,
+      ).copyWith(fontFamilyFallback: emojiFallbacks);
+    case 'PlusJakartaSans':
+      return GoogleFonts.plusJakartaSans(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+        color: color,
+        shadows: shadows,
+      ).copyWith(fontFamilyFallback: emojiFallbacks);
+    case 'Neon':
+      return GoogleFonts.outfit(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        shadows: [
+          Shadow(color: color, blurRadius: 14),
+          Shadow(color: color, blurRadius: 24),
+          Shadow(color: color, blurRadius: 32),
+        ],
+      ).copyWith(fontFamilyFallback: emojiFallbacks);
     default:
       return GoogleFonts.patrickHand(
         fontSize: fontSize,
@@ -183,7 +225,8 @@ class DoodleTextItem {
 
   /// Font size in virtual units.
   final double fontSize;
-  final String fontStyle; // 'PatrickHand', 'Caveat', 'Gaegu'
+  final String fontStyle; // 'PatrickHand', 'Caveat', 'Gaegu', 'Outfit', 'PlusJakartaSans', 'Neon'
+  final bool hasBackground; // Instagram stories text pill style!
 
   TextPainter? _painter;
 
@@ -193,13 +236,17 @@ class DoodleTextItem {
     required this.color,
     this.fontSize = 64.0,
     this.fontStyle = 'PatrickHand',
+    this.hasBackground = false,
   });
 
   /// Cached layout, so we never lay text out inside paint().
   TextPainter get painter {
     if (_painter != null) return _painter!;
+    final textColor = hasBackground
+        ? (color.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+        : color;
     final tp = TextPainter(
-      text: TextSpan(text: text, style: doodleTextStyle(fontStyle, fontSize, color)),
+      text: TextSpan(text: text, style: doodleTextStyle(fontStyle, fontSize, textColor)),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: math.max(120, kVirtualWidth - position.dx - 24));
     return _painter = tp;
@@ -217,6 +264,7 @@ class DoodleTextItem {
         'c': color.toARGB32(),
         'f': _r(fontSize),
         'k': fontStyle,
+        if (hasBackground) 'bg': 1,
       };
 
   factory DoodleTextItem.fromJson(Map<String, dynamic> j) => DoodleTextItem(
@@ -225,7 +273,79 @@ class DoodleTextItem {
         color: Color((j['c'] as num?)?.toInt() ?? 0xFF00CEC9),
         fontSize: (j['f'] as num? ?? 64).toDouble(),
         fontStyle: j['k']?.toString() ?? 'PatrickHand',
+        hasBackground: (j['bg'] as num?) == 1,
       );
+}
+
+/// Generates smooth geometric outline points for Canva shapes!
+List<Offset> generateShapePoints(String shape, Offset center, double radius) {
+  final pts = <Offset>[];
+  switch (shape.toLowerCase()) {
+    case 'circle':
+      const count = 36;
+      for (int i = 0; i <= count; i++) {
+        final a = (i / count) * 2 * math.pi;
+        pts.add(center + Offset(math.cos(a) * radius, math.sin(a) * radius));
+      }
+      break;
+    case 'star':
+      const points = 5;
+      const totalPts = points * 2;
+      final innerRadius = radius * 0.44;
+      for (int i = 0; i <= totalPts; i++) {
+        final r = (i % 2 == 0) ? radius : innerRadius;
+        final a = (i / totalPts) * 2 * math.pi - math.pi / 2;
+        pts.add(center + Offset(math.cos(a) * r, math.sin(a) * r));
+      }
+      break;
+    case 'heart':
+      const count = 48;
+      final scale = radius / 16.0;
+      for (int i = 0; i <= count; i++) {
+        final t = (i / count) * 2 * math.pi;
+        final x = 16 * math.pow(math.sin(t), 3);
+        final y = -(13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t));
+        pts.add(center + Offset(x * scale, y * scale + radius * 0.15));
+      }
+      break;
+    case 'rect':
+    case 'square':
+      final r = radius * 0.9;
+      pts.add(center + Offset(-r, -r));
+      pts.add(center + Offset(r, -r));
+      pts.add(center + Offset(r, r));
+      pts.add(center + Offset(-r, r));
+      pts.add(center + Offset(-r, -r));
+      break;
+    case 'arrow':
+      final r = radius;
+      pts.add(center + Offset(-r, 0));
+      pts.add(center + Offset(r, 0));
+      pts.add(center + Offset(r * 0.5, -r * 0.4));
+      pts.add(center + Offset(r, 0));
+      pts.add(center + Offset(r * 0.5, r * 0.4));
+      break;
+    case 'bubble':
+      final r = radius * 0.85;
+      pts.add(center + Offset(-r, -r * 0.7));
+      pts.add(center + Offset(r, -r * 0.7));
+      pts.add(center + Offset(r, r * 0.6));
+      pts.add(center + Offset(-r * 0.2, r * 0.6));
+      pts.add(center + Offset(-r * 0.6, r * 1.05));
+      pts.add(center + Offset(-r * 0.5, r * 0.6));
+      pts.add(center + Offset(-r, r * 0.6));
+      pts.add(center + Offset(-r, -r * 0.7));
+      break;
+    default:
+      // Fallback circle
+      const count = 28;
+      for (int i = 0; i <= count; i++) {
+        final a = (i / count) * 2 * math.pi;
+        pts.add(center + Offset(math.cos(a) * radius, math.sin(a) * radius));
+      }
+      break;
+  }
+  return densify(pts, maxGap: 8.0);
 }
 
 class DoodleEmojiItem {
@@ -322,6 +442,7 @@ class DoodleData {
               color: t.color,
               fontSize: t.fontSize,
               fontStyle: t.fontStyle,
+              hasBackground: t.hasBackground,
             )
         ],
         emojiItems: [

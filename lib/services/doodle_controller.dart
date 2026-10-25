@@ -9,6 +9,28 @@ class RepaintTick extends ChangeNotifier {
 
 enum _DoodleHistoryKind { stroke, text, emoji }
 
+class _DoodleActionRecord {
+  final _DoodleHistoryKind kind;
+  final DoodleStroke? stroke;
+  final DoodleTextItem? text;
+  final DoodleEmojiItem? emoji;
+
+  _DoodleActionRecord.stroke(this.stroke)
+      : kind = _DoodleHistoryKind.stroke,
+        text = null,
+        emoji = null;
+
+  _DoodleActionRecord.text(this.text)
+      : kind = _DoodleHistoryKind.text,
+        stroke = null,
+        emoji = null;
+
+  _DoodleActionRecord.emoji(this.emoji)
+      : kind = _DoodleHistoryKind.emoji,
+        stroke = null,
+        text = null;
+}
+
 /// Owns the doodle being drawn / erased. The UI never `setState`s while a
 /// finger is moving: only the two canvas layers repaint through [committed]
 /// and [live], which is what keeps drawing at a locked 60/120 fps.
@@ -23,9 +45,11 @@ class DoodleController extends ChangeNotifier {
   List<DoodleTextItem> texts = [];
   List<DoodleEmojiItem> emojis = [];
   String? backgroundPhoto;
-  final List<_DoodleHistoryKind> _history = [];
+  final List<_DoodleActionRecord> _undoStack = [];
+  final List<_DoodleActionRecord> _redoStack = [];
 
   Color color = const Color(0xFFFFC72C);
+  DoodleBrushType brushType = DoodleBrushType.pen;
 
   /// Brush size in *screen* pixels (converted to virtual units on commit).
   double brushPx = 5.0;
@@ -58,8 +82,8 @@ class DoodleController extends ChangeNotifier {
 
   List<Offset> get livePoints => _live;
   bool get isEmpty => strokes.isEmpty && texts.isEmpty && emojis.isEmpty && (backgroundPhoto == null || backgroundPhoto!.isEmpty);
-  bool get canUndo =>
-      (strokes.isNotEmpty || texts.isNotEmpty || emojis.isNotEmpty) && !mustErase;
+  bool get canUndo => _undoStack.isNotEmpty && !mustErase;
+  bool get canRedo => _redoStack.isNotEmpty && !mustErase;
 
   double get emojiSize {
     if (brushPx <= 3.0) return 72.0;
@@ -87,7 +111,17 @@ class DoodleController extends ChangeNotifier {
     texts = c.textItems;
     emojis = c.emojiItems;
     backgroundPhoto = c.backgroundPhoto;
-    _history.clear();
+    _undoStack.clear();
+    _redoStack.clear();
+    for (final s in strokes) {
+      _undoStack.add(_DoodleActionRecord.stroke(s));
+    }
+    for (final t in texts) {
+      _undoStack.add(_DoodleActionRecord.text(t));
+    }
+    for (final e in emojis) {
+      _undoStack.add(_DoodleActionRecord.emoji(e));
+    }
     _live.clear();
     eraserPos = null;
     stampEmoji = null;
@@ -106,7 +140,8 @@ class DoodleController extends ChangeNotifier {
     texts = [];
     emojis = [];
     backgroundPhoto = null;
-    _history.clear();
+    _undoStack.clear();
+    _redoStack.clear();
     _live.clear();
     eraserPos = null;
     _initialUnits = 0;
@@ -151,6 +186,13 @@ class DoodleController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setBrushType(DoodleBrushType type) {
+    brushType = type;
+    eraser = false;
+    stampEmoji = null;
+    notifyListeners();
+  }
+
   void setStampEmoji(String? emoji) {
     stampEmoji = emoji;
     if (emoji != null) eraser = false;
@@ -164,34 +206,62 @@ class DoodleController extends ChangeNotifier {
 
   void undo() {
     if (!canUndo) return;
-    if (_history.isNotEmpty) {
-      final act = _history.removeLast();
-      switch (act) {
-        case _DoodleHistoryKind.stroke:
-          if (strokes.isNotEmpty) strokes.removeLast();
-          break;
-        case _DoodleHistoryKind.text:
-          if (texts.isNotEmpty) texts.removeLast();
-          break;
-        case _DoodleHistoryKind.emoji:
-          if (emojis.isNotEmpty) emojis.removeLast();
-          break;
-      }
-    } else if (strokes.isNotEmpty) {
-      strokes.removeLast();
-    } else if (emojis.isNotEmpty) {
-      emojis.removeLast();
-    } else if (texts.isNotEmpty) {
-      texts.removeLast();
+    final act = _undoStack.removeLast();
+    _redoStack.add(act);
+    switch (act.kind) {
+      case _DoodleHistoryKind.stroke:
+        if (act.stroke != null) strokes.remove(act.stroke);
+        break;
+      case _DoodleHistoryKind.text:
+        if (act.text != null) texts.remove(act.text);
+        break;
+      case _DoodleHistoryKind.emoji:
+        if (act.emoji != null) emojis.remove(act.emoji);
+        break;
     }
     committed.bump();
     notifyListeners();
   }
 
-  void addText(String text, [String fontStyle = 'PatrickHand']) {
+  void redo() {
+    if (!canRedo) return;
+    final act = _redoStack.removeLast();
+    _undoStack.add(act);
+    switch (act.kind) {
+      case _DoodleHistoryKind.stroke:
+        if (act.stroke != null) strokes.add(act.stroke!);
+        break;
+      case _DoodleHistoryKind.text:
+        if (act.text != null) texts.add(act.text!);
+        break;
+      case _DoodleHistoryKind.emoji:
+        if (act.emoji != null) emojis.add(act.emoji!);
+        break;
+    }
+    committed.bump();
+    notifyListeners();
+  }
+
+  void addShape(String shapeType) {
+    final center = Offset(kVirtualWidth / 2, viewHeightVirtual * 0.42);
+    final pts = generateShapePoints(shapeType, center, 160.0);
+    final s = DoodleStroke(
+      points: pts,
+      color: color,
+      size: (brushPx / scale).clamp(8.0, 24.0),
+      brushType: brushType,
+    );
+    strokes.add(s);
+    _undoStack.add(_DoodleActionRecord.stroke(s));
+    _redoStack.clear();
+    committed.bump();
+    notifyListeners();
+  }
+
+  void addText(String text, [String fontStyle = 'PatrickHand', bool hasBackground = false]) {
     if (text.trim().isEmpty) return;
     final rnd = math.Random();
-    texts.add(DoodleTextItem(
+    final item = DoodleTextItem(
       text: text.trim(),
       position: Offset(
         60 + rnd.nextDouble() * 220,
@@ -200,8 +270,11 @@ class DoodleController extends ChangeNotifier {
       color: color,
       fontSize: 70,
       fontStyle: fontStyle,
-    ));
-    _history.add(_DoodleHistoryKind.text);
+      hasBackground: hasBackground,
+    );
+    texts.add(item);
+    _undoStack.add(_DoodleActionRecord.text(item));
+    _redoStack.clear();
     committed.bump();
     notifyListeners();
   }
@@ -214,12 +287,14 @@ class DoodleController extends ChangeNotifier {
           120 + rnd.nextDouble() * 560,
           viewHeightVirtual * (0.22 + rnd.nextDouble() * 0.5),
         );
-    emojis.add(DoodleEmojiItem(
+    final item = DoodleEmojiItem(
       emoji: emoji,
       position: pos,
       size: s,
-    ));
-    _history.add(_DoodleHistoryKind.emoji);
+    );
+    emojis.add(item);
+    _undoStack.add(_DoodleActionRecord.emoji(item));
+    _redoStack.clear();
     committed.bump();
     onStrokeStart?.call();
     notifyListeners();
@@ -242,7 +317,8 @@ class DoodleController extends ChangeNotifier {
         size: s,
       );
       emojis.add(item);
-      _history.add(_DoodleHistoryKind.emoji);
+      _undoStack.add(_DoodleActionRecord.emoji(item));
+      _redoStack.clear();
       committed.bump();
       onStrokeStart?.call();
       notifyListeners();
@@ -268,12 +344,14 @@ class DoodleController extends ChangeNotifier {
       final lastPos = emojis.isNotEmpty ? emojis.last.position : null;
       final curPos = Offset(v.dx - s / 2, v.dy - s / 2);
       if (lastPos == null || (curPos - lastPos).distance >= s * 0.85) {
-        emojis.add(DoodleEmojiItem(
+        final item = DoodleEmojiItem(
           emoji: stampEmoji!,
           position: curPos,
           size: s,
-        ));
-        _history.add(_DoodleHistoryKind.emoji);
+        );
+        emojis.add(item);
+        _undoStack.add(_DoodleActionRecord.emoji(item));
+        _redoStack.clear();
         committed.bump();
         notifyListeners();
       }
@@ -296,12 +374,15 @@ class DoodleController extends ChangeNotifier {
       return;
     }
     if (_live.isNotEmpty) {
-      strokes.add(DoodleStroke(
+      final s = DoodleStroke(
         points: List<Offset>.from(_live),
         color: color,
         size: brushPx / scale,
-      ));
-      _history.add(_DoodleHistoryKind.stroke);
+        brushType: brushType,
+      );
+      strokes.add(s);
+      _undoStack.add(_DoodleActionRecord.stroke(s));
+      _redoStack.clear();
       _live.clear();
       committed.bump();
       live.bump();

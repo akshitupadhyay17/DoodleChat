@@ -882,6 +882,9 @@ class ChatService extends ChangeNotifier {
     return true;
   }
 
+  /// Post a DoodleUp broadcast (no concept of story - it's DoodleUp!)
+  void postDoodleUp(DoodleData doodle) => postDoodleUpStory(doodle);
+
   void postDoodleUpStory(DoodleData doodle) {
     currentUser.activeStory = doodle;
     currentUser.storyTimestamp = DateTime.now();

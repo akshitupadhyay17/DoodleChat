@@ -110,17 +110,74 @@ class _CommittedPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.save();
     canvas.scale(scale);
+
     for (final s in c.strokes) {
-      _fill.color = s.color;
-      canvas.drawPath(s.path, _fill);
+      _paintStroke(canvas, s);
     }
     for (final t in c.texts) {
+      if (t.hasBackground) {
+        final padH = 14.0;
+        final padV = 6.0;
+        final rrect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            t.position.dx - padH,
+            t.position.dy - padV,
+            t.painter.width + padH * 2,
+            t.painter.height + padV * 2,
+          ),
+          const Radius.circular(14),
+        );
+        canvas.drawRRect(rrect, Paint()..color = t.color..isAntiAlias = true);
+      }
       t.painter.paint(canvas, t.position);
     }
     for (final e in c.emojis) {
       e.painter.paint(canvas, e.position);
     }
     canvas.restore();
+  }
+
+  void _paintStroke(Canvas canvas, DoodleStroke s) {
+    switch (s.brushType) {
+      case DoodleBrushType.neon:
+        // Instagram Neon Brush: Outer glow pass + inner white core pass
+        final glowRadius = (s.size * 0.75).clamp(8.0, 36.0);
+        final glowPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = (s.size * 0.9).clamp(6.0, 42.0)
+          ..color = s.color.withOpacity(0.85)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius)
+          ..isAntiAlias = true;
+        canvas.drawPath(s.path, glowPaint);
+
+        final corePaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = Color.lerp(s.color, Colors.white, 0.82)!
+          ..isAntiAlias = true;
+        canvas.drawPath(s.path, corePaint);
+        break;
+
+      case DoodleBrushType.marker:
+        final markerPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = s.color.withOpacity(0.82)
+          ..isAntiAlias = true;
+        canvas.drawPath(s.path, markerPaint);
+        break;
+
+      case DoodleBrushType.highlighter:
+        final hlPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = s.color.withOpacity(0.38)
+          ..isAntiAlias = true;
+        canvas.drawPath(s.path, hlPaint);
+        break;
+
+      case DoodleBrushType.pen:
+        _fill.color = s.color;
+        canvas.drawPath(s.path, _fill);
+        break;
+    }
   }
 
   @override
@@ -142,8 +199,48 @@ class _LivePainter extends CustomPainter {
     if (pts.isNotEmpty) {
       canvas.save();
       canvas.scale(scale);
-      _fill.color = c.color;
-      canvas.drawPath(buildFreehandPath(pts, c.brushPx / scale), _fill);
+      final virtSize = c.brushPx / scale;
+      final path = buildFreehandPath(pts, virtSize);
+
+      switch (c.brushType) {
+        case DoodleBrushType.neon:
+          final glowRadius = (virtSize * 0.75).clamp(8.0, 36.0);
+          final glowPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = (virtSize * 0.9).clamp(6.0, 42.0)
+            ..color = c.color.withOpacity(0.85)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius)
+            ..isAntiAlias = true;
+          canvas.drawPath(path, glowPaint);
+
+          final corePaint = Paint()
+            ..style = PaintingStyle.fill
+            ..color = Color.lerp(c.color, Colors.white, 0.82)!
+            ..isAntiAlias = true;
+          canvas.drawPath(path, corePaint);
+          break;
+
+        case DoodleBrushType.marker:
+          final markerPaint = Paint()
+            ..style = PaintingStyle.fill
+            ..color = c.color.withOpacity(0.82)
+            ..isAntiAlias = true;
+          canvas.drawPath(path, markerPaint);
+          break;
+
+        case DoodleBrushType.highlighter:
+          final hlPaint = Paint()
+            ..style = PaintingStyle.fill
+            ..color = c.color.withOpacity(0.38)
+            ..isAntiAlias = true;
+          canvas.drawPath(path, hlPaint);
+          break;
+
+        case DoodleBrushType.pen:
+          _fill.color = c.color;
+          canvas.drawPath(path, _fill);
+          break;
+      }
       canvas.restore();
     }
 
