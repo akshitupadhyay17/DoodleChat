@@ -3,6 +3,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const WebSocket = require('ws');
 
+const fs = require('fs');
 const TEST_PORT = 8999;
 const SERVER_PATH = path.join(__dirname, '..', 'server', 'relay.js');
 
@@ -13,6 +14,11 @@ function sleep(ms) {
 }
 
 function startServer() {
+  const testStateFile = path.join(__dirname, '..', 'server', 'data', 'state.json');
+  try {
+    if (fs.existsSync(testStateFile)) fs.unlinkSync(testStateFile);
+  } catch (_) {}
+
   return new Promise((resolve, reject) => {
     serverProc = spawn('node', [SERVER_PATH], {
       env: { ...process.env, PORT: TEST_PORT },
@@ -146,11 +152,18 @@ async function runE2ETest() {
     );
     await sleep(200);
 
-    const bobGotDoodle = bob.events.some(
+    const bobDoodleEvent = bob.events.find(
       (e) => e.type === 'incoming_doodle' && e.from === 'alice'
     );
-    if (!bobGotDoodle) throw new Error('Bob did not receive doodle from Alice');
-    console.log('✓ Doodle received by Bob');
+    if (!bobDoodleEvent) throw new Error('Bob did not receive doodle from Alice');
+    if (!bobDoodleEvent.streak || bobDoodleEvent.streak < 1) throw new Error('Streak count missing in incoming_doodle');
+    console.log(`✓ Doodle received by Bob with streak: ${bobDoodleEvent.streak}`);
+
+    const aliceDelivered = alice.events.find(
+      (e) => e.type === 'doodle_delivered' && e.to === 'bob'
+    );
+    if (!aliceDelivered || !aliceDelivered.streak) throw new Error('doodle_delivered missing streak');
+    console.log(`✓ Alice confirmed doodle delivery with streak: ${aliceDelivered.streak}`);
 
     // Golden Turn Rule: Alice tries to send another doodle before Bob erases
     alice.ws.send(
@@ -194,11 +207,32 @@ async function runE2ETest() {
     );
     await sleep(200);
 
-    const aliceErasedAck = alice.events.some(
+    const aliceErasedAck = alice.events.find(
       (e) => e.type === 'doodle_erased_ack' && e.from === 'bob'
     );
     if (!aliceErasedAck) throw new Error('Alice did not receive doodle_erased_ack');
-    console.log('✓ Doodle Erased Ack verified (Canvas unlocked for new turn!)');
+    if (!aliceErasedAck.streak || aliceErasedAck.streak < 1) throw new Error('doodle_erased_ack missing streak');
+    console.log(`✓ Doodle Erased Ack verified with streak ${aliceErasedAck.streak} (Canvas unlocked for new turn!)`);
+
+    // 7. Testing photo payload sending on unlocked canvas
+    console.log('7. Testing Photo Message on Unlocked Canvas...');
+    const photoDoodle = {
+      ...mockDoodle,
+      photo: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...',
+    };
+    alice.ws.send(
+      JSON.stringify({
+        type: 'send_doodle',
+        to: 'bob',
+        doodle: photoDoodle,
+      })
+    );
+    await sleep(200);
+    const bobGotPhotoDoodle = bob.events.some(
+      (e) => e.type === 'incoming_doodle' && e.doodle && e.doodle.photo
+    );
+    if (!bobGotPhotoDoodle) throw new Error('Bob did not receive photo doodle');
+    console.log('✓ Photo doodle delivered successfully to Bob on new turn!');
 
     // Close sockets
     alice.ws.close();

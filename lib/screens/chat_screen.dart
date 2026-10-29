@@ -237,23 +237,22 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _doodle.setBackgroundPhoto(base64Str);
       });
-      _toast('Photo loaded! Compulsory to draw a doodle on it 🎨', const Color(0xFFFF4081));
+      _toast('Photo loaded! Add doodles, text, or tap send 🎨', const Color(0xFFFFC72C));
     } catch (e) {
       _toast('Could not open photo: $e', Colors.black87);
     }
   }
 
   void _sendDoodle() {
+    if (_textCtrl.text.trim().isNotEmpty) {
+      _addText(_textCtrl.text);
+    }
+
     final hasPhoto = _doodle.backgroundPhoto != null && _doodle.backgroundPhoto!.isNotEmpty;
     final hasDoodle = _doodle.strokes.isNotEmpty || _doodle.texts.isNotEmpty || _doodle.emojis.isNotEmpty;
 
-    if (hasPhoto && !hasDoodle) {
-      _toast('Compulsory: Draw a doodle on your photo before sending! 🎨', const Color(0xFFFF4081));
-      return;
-    }
-
-    if (_doodle.isEmpty) {
-      _toast('Please draw something on the canvas first! 🎨', Colors.black87);
+    if (!hasPhoto && !hasDoodle && _doodle.isEmpty) {
+      _toast('Draw or pick a photo before sending! 🎨', Colors.black87);
       return;
     }
     final data = _doodle.toData(_service.currentUser.username);

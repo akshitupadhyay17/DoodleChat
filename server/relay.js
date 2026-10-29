@@ -48,6 +48,49 @@ const norm = (u) => String(u || '').toLowerCase().trim().replace(/^@/, '').repla
 const DATA_DIR = path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 
+/** Streaks: Map of pairKey -> { count, lastDate, lastSender } */
+const streaks = new Map();
+
+function updateStreak(userA, userB) {
+  const pKey = pairKey(userA, userB);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  let entry = streaks.get(pKey);
+  if (!entry) {
+    entry = { count: 1, lastDate: today, lastSender: userA };
+  } else if (entry.lastDate === today) {
+    // Interacted same day: keep current streak count
+    entry.lastSender = userA;
+  } else if (entry.lastDate === yesterday) {
+    // Consecutive day interaction: increment streak
+    entry.count = (entry.count || 0) + 1;
+    entry.lastDate = today;
+    entry.lastSender = userA;
+  } else {
+    // Lapsed streak (>1 day apart)
+    entry.count = 1;
+    entry.lastDate = today;
+    entry.lastSender = userA;
+  }
+  streaks.set(pKey, entry);
+  scheduleSave();
+  return entry.count;
+}
+
+function getStreak(userA, userB) {
+  const pKey = pairKey(userA, userB);
+  const entry = streaks.get(pKey);
+  if (!entry) return 1;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (entry.lastDate === today || entry.lastDate === yesterday) {
+    return entry.count || 1;
+  }
+  return 1;
+}
+
 function loadState() {
   try {
     if (!fs.existsSync(STATE_FILE)) return;
@@ -65,7 +108,10 @@ function loadState() {
     if (Array.isArray(data.pending)) {
       for (const [k, v] of data.pending) pending.set(k, v);
     }
-    console.log(`Loaded persisted state: ${profiles.size} profiles, ${friends.size} friendships, ${pending.size} pending doodles`);
+    if (Array.isArray(data.streaks)) {
+      for (const [k, v] of data.streaks) streaks.set(k, v);
+    }
+    console.log(`Loaded persisted state: ${profiles.size} profiles, ${friends.size} friendships, ${pending.size} pending doodles, ${streaks.size} streaks`);
   } catch (err) {
     console.error('Failed to load state from disk:', err);
   }
@@ -83,6 +129,7 @@ function scheduleSave() {
         friends: [...friends],
         friendRequests: [...friendRequests],
         pending: [...pending.entries()],
+        streaks: [...streaks.entries()],
       };
       const tmp = STATE_FILE + '.tmp';
       fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
@@ -141,10 +188,16 @@ function buildSync(username) {
     }
   }
   const friendsList = [];
+  const streaksMap = {};
   for (const f of friends) {
     const [a, b] = f.split('<>');
-    if (a === u) friendsList.push(b);
-    else if (b === u) friendsList.push(a);
+    if (a === u) {
+      friendsList.push(b);
+      streaksMap[b] = getStreak(u, b);
+    } else if (b === u) {
+      friendsList.push(a);
+      streaksMap[a] = getStreak(u, a);
+    }
   }
   return {
     type: 'sync',
@@ -153,6 +206,7 @@ function buildSync(username) {
     incomingRequests,
     outgoingRequests,
     friends: friendsList,
+    streaks: streaksMap,
   };
 }
 
@@ -387,21 +441,23 @@ wss.on('connection', (ws) => {
           send(ws, { type: 'send_rejected', to, reason: 'pending_doodle' });
           return;
         }
+        const streak = updateStreak(me, to);
         pending.set(key(me, to), { doodle: data.doodle, at: Date.now() });
         scheduleSave();
-        sendTo(to, { type: 'incoming_doodle', from: me, doodle: data.doodle });
-        send(ws, { type: 'doodle_delivered', to, online: sockets.has(to) });
-        console.log(`✎ @${me} → @${to} (${sockets.has(to) ? 'live' : 'queued'})`);
+        sendTo(to, { type: 'incoming_doodle', from: me, doodle: data.doodle, streak });
+        send(ws, { type: 'doodle_delivered', to, online: sockets.has(to), streak });
+        console.log(`✎ @${me} → @${to} (streak ${streak}, ${sockets.has(to) ? 'live' : 'queued'})`);
         break;
       }
 
       case 'doodle_erased': {
         if (!me) return;
         const from = norm(data.to); // the original sender
+        const streak = getStreak(from, me);
         if (pending.delete(key(from, me))) {
           scheduleSave();
-          sendTo(from, { type: 'doodle_erased_ack', from: me });
-          console.log(`✓ @${me} erased @${from}'s doodle`);
+          sendTo(from, { type: 'doodle_erased_ack', from: me, streak });
+          console.log(`✓ @${me} erased @${from}'s doodle (streak ${streak})`);
         }
         break;
       }
@@ -437,9 +493,13 @@ wss.on('connection', (ws) => {
       console.log(`- @${me} offline (${sockets.size} connected)`);
     }
   });
+
+  ws.on('error', (err) => {
+    console.error(`WS error for @${me || 'unknown'}:`, err.message);
+  });
 });
 
-// Keep connections alive through proxies/tunnels and drop dead ones.
+// Keep connections alive through proxies/tunnels and drop dead ones promptly.
 setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.isAlive) {
@@ -449,7 +509,7 @@ setInterval(() => {
     ws.isAlive = false;
     try { ws.ping(); } catch (e) {}
   }
-}, 25000);
+}, 15000);
 
 loadState();
 

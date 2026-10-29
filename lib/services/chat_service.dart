@@ -350,22 +350,49 @@ class ChatService extends ChangeNotifier {
         _handleSync(data);
         break;
 
-      case 'incoming_doodle':
-        _handleIncoming(
-          (data['from'] ?? '').toString(),
+      case 'doodle_delivered': {
+        final to = (data['to'] ?? '').toString();
+        final c = _find(to);
+        if (c != null) {
+          if (data['online'] != null) {
+            c.isOnline = data['online'] == true;
+          }
+          if (data['streak'] != null) {
+            c.streakCount = (data['streak'] as num).toInt();
+          }
+          c.doodleStatus = DoodleChatStatus.sentWaitingForErase;
+          _saveContacts();
+          notifyListeners();
+        }
+        break;
+      }
+
+      case 'incoming_doodle': {
+        final from = (data['from'] ?? '').toString();
+        final c = await ensureContact(from);
+        if (data['streak'] != null) {
+          c.streakCount = (data['streak'] as num).toInt();
+        }
+        await _handleIncoming(
+          from,
           Map<String, dynamic>.from(data['doodle'] as Map),
           announce: true,
         );
         break;
+      }
 
-      case 'doodle_erased_ack':
-        final c = _find((data['from'] ?? '').toString());
+      case 'doodle_erased_ack': {
+        final from = (data['from'] ?? '').toString();
+        final c = _find(from);
         if (c != null) {
           c.pendingDoodle = null;
           c.doodleStatus = DoodleChatStatus.idle;
           c.peerEraseProgress.value = 0;
           c.lastActive = 'Just now';
           c.lastInteractionTimestamp = DateTime.now();
+          if (data['streak'] != null) {
+            c.streakCount = (data['streak'] as num).toInt();
+          }
           contacts.remove(c);
           contacts.insert(0, c);
           _saveContacts();
@@ -373,6 +400,7 @@ class ChatService extends ChangeNotifier {
           notifyListeners();
         }
         break;
+      }
 
       case 'peer_erase_progress':
         final c = _find((data['from'] ?? '').toString());
@@ -510,20 +538,30 @@ class ChatService extends ChangeNotifier {
 
   void _updatePeers(dynamic users) {
     onlinePeers.clear();
-    final me = currentUser.username.toLowerCase();
+    final me = currentUser.username.toLowerCase().replaceAll('@', '').trim();
     final onlineNames = <String>{};
     for (final u in (users as List<dynamic>? ?? const [])) {
       final m = Map<String, dynamic>.from(u as Map);
-      final name = (m['username'] ?? '').toString();
+      final name = (m['username'] ?? '').toString().toLowerCase().replaceAll('@', '').trim();
       onlineNames.add(name);
       if (name != me) onlinePeers.add(m);
     }
     for (final c in contacts) {
       if (!c.isDemo) {
-        c.isOnline = onlineNames.contains(c.username);
-        if (!c.isOnline) c.peerDrawing.value = false;
+        final cUser = c.username.toLowerCase().replaceAll('@', '').trim();
+        final wasOnline = c.isOnline;
+        c.isOnline = onlineNames.contains(cUser);
+        if (!c.isOnline) {
+          c.peerDrawing.value = false;
+          if (wasOnline) {
+            c.lastActive = 'Just now';
+            c.lastInteractionTimestamp = DateTime.now();
+          }
+        } else {
+          c.lastActive = 'Online';
+        }
         final p = onlinePeers.cast<Map<String, dynamic>?>().firstWhere(
-              (x) => x?['username'] == c.username,
+              (x) => (x?['username']?.toString().toLowerCase().replaceAll('@', '').trim()) == cUser,
               orElse: () => null,
             );
         final photo = p?['avatarPhoto']?.toString();
@@ -532,17 +570,20 @@ class ChatService extends ChangeNotifier {
         }
       }
     }
+    notifyListeners();
   }
 
   Future<void> _handleSync(Map<String, dynamic> data) async {
     final incoming = (data['incoming'] as List<dynamic>? ?? const []);
-    final outgoing = ((data['outgoing'] as List<dynamic>? ?? const [])).map((e) => e.toString()).toSet();
+    final outgoing = ((data['outgoing'] as List<dynamic>? ?? const []))
+        .map((e) => e.toString().toLowerCase().replaceAll('@', '').trim())
+        .toSet();
     final incomingFrom = <String>{};
 
     for (final item in incoming) {
       final m = Map<String, dynamic>.from(item as Map);
       final from = m['from'].toString();
-      incomingFrom.add(from);
+      incomingFrom.add(from.toLowerCase().replaceAll('@', '').trim());
       await _handleIncoming(from, Map<String, dynamic>.from(m['doodle'] as Map), announce: false);
     }
 
@@ -555,7 +596,9 @@ class ChatService extends ChangeNotifier {
       c.friendshipStatus = FriendshipStatus.requestReceived;
     }
 
-    final outReqs = ((data['outgoingRequests'] as List<dynamic>? ?? const [])).map((e) => e.toString()).toSet();
+    final outReqs = ((data['outgoingRequests'] as List<dynamic>? ?? const []))
+        .map((e) => e.toString().toLowerCase().replaceAll('@', '').trim())
+        .toSet();
     for (final to in outReqs) {
       final c = await ensureContact(to, initialStatus: FriendshipStatus.requestSent);
       if (c.friendshipStatus != FriendshipStatus.accepted) {
@@ -563,7 +606,9 @@ class ChatService extends ChangeNotifier {
       }
     }
 
-    final mutualFriends = ((data['friends'] as List<dynamic>? ?? const [])).map((e) => e.toString()).toSet();
+    final mutualFriends = ((data['friends'] as List<dynamic>? ?? const []))
+        .map((e) => e.toString().toLowerCase().replaceAll('@', '').trim())
+        .toSet();
     for (final f in mutualFriends) {
       final c = _find(f);
       if (c != null) {
@@ -571,19 +616,54 @@ class ChatService extends ChangeNotifier {
       }
     }
 
+    final streaksData = data['streaks'] as Map<String, dynamic>?;
+    if (streaksData != null) {
+      for (final entry in streaksData.entries) {
+        final f = _find(entry.key);
+        if (f != null && entry.value is num) {
+          f.streakCount = (entry.value as num).toInt();
+        }
+      }
+    }
+
     for (final c in contacts) {
       if (c.isDemo) continue;
-      if (outgoing.contains(c.username)) {
+      final u = c.username.toLowerCase().replaceAll('@', '').trim();
+      if (outgoing.contains(u)) {
         if (c.doodleStatus != DoodleChatStatus.sentWaitingForErase) {
           c.doodleStatus = DoodleChatStatus.sentWaitingForErase;
         }
-      } else if (!incomingFrom.contains(c.username)) {
+      } else if (!incomingFrom.contains(u)) {
         // Server says nothing is pending with this friend.
         c.doodleStatus = DoodleChatStatus.idle;
         c.pendingDoodle = null;
       }
     }
+    _saveContacts();
     notifyListeners();
+  }
+
+  void _recordInteraction(ChatContact c, {int? authoritativeStreak}) {
+    c.lastActive = 'Just now';
+    final now = DateTime.now();
+    if (authoritativeStreak != null && authoritativeStreak > 0) {
+      c.streakCount = authoritativeStreak;
+    } else {
+      final prev = c.lastInteractionTimestamp;
+      if (prev == null) {
+        c.streakCount = 1;
+      } else {
+        final prevDate = DateTime(prev.year, prev.month, prev.day);
+        final nowDate = DateTime(now.year, now.month, now.day);
+        final diffDays = nowDate.difference(prevDate).inDays;
+        if (diffDays == 1) {
+          c.streakCount++;
+        } else if (diffDays > 1) {
+          c.streakCount = 1;
+        }
+      }
+    }
+    c.lastInteractionTimestamp = now;
   }
 
   Future<void> _handleIncoming(String from, Map<String, dynamic> json, {required bool announce}) async {
@@ -594,10 +674,7 @@ class ChatService extends ChangeNotifier {
     }
     c.pendingDoodle = doodle;
     c.doodleStatus = DoodleChatStatus.receivedMustErase;
-    c.activeStory = doodle;
-    c.storyTimestamp = DateTime.now();
-    c.lastActive = 'Just now';
-    c.lastInteractionTimestamp = DateTime.now();
+    _recordInteraction(c);
     c.peerDrawing.value = false;
     // Move the live conversation to the top.
     contacts.remove(c);
@@ -613,9 +690,9 @@ class ChatService extends ChangeNotifier {
   // ───────────────────────── contacts ─────────────────────────
 
   ChatContact? _find(String username) {
-    final u = username.toLowerCase();
+    final u = username.toLowerCase().replaceAll('@', '').trim();
     for (final c in contacts) {
-      if (c.username.toLowerCase() == u) return c;
+      if (c.username.toLowerCase().replaceAll('@', '').trim() == u) return c;
     }
     return null;
   }
@@ -740,11 +817,7 @@ class ChatService extends ChangeNotifier {
 
     c.pendingDoodle = doodle;
     c.doodleStatus = DoodleChatStatus.sentWaitingForErase;
-    c.streakCount++;
-    c.lastActive = 'Just now';
-    c.lastInteractionTimestamp = DateTime.now();
-    currentUser.activeStory = doodle;
-    currentUser.storyTimestamp = DateTime.now();
+    _recordInteraction(c);
     contacts.remove(c);
     contacts.insert(0, c);
     _saveContacts();
@@ -935,8 +1008,6 @@ class ChatService extends ChangeNotifier {
     g.latestDoodle = doodle;
     g.lastActive = DateTime.now();
     g.streakCount++;
-    currentUser.activeStory = doodle;
-    currentUser.storyTimestamp = DateTime.now();
     if (isConnected) {
       for (final mem in g.memberUsernames) {
         if (mem.toLowerCase() != currentUser.username.toLowerCase()) {
@@ -1000,8 +1071,6 @@ class ChatService extends ChangeNotifier {
         emojiItems: [DoodleEmojiItem(emoji: '🎉', position: const Offset(500, 420), size: 90)],
       );
       contact.pendingDoodle = replyDoodle;
-      contact.activeStory = replyDoodle;
-      contact.storyTimestamp = DateTime.now();
       _events.add(ChatEvent(ChatEventType.incomingDoodle, contact: contact));
       notifyListeners();
     });

@@ -154,17 +154,26 @@ class _DoodleCanvasState extends State<DoodleCanvas> {
                   if (photo == null || photo.isEmpty) return const SizedBox.shrink();
                   try {
                     final bytes = base64Decode(photo);
-                    return Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.memory(
-                          bytes,
-                          fit: BoxFit.cover,
-                          gaplessPlayback: true,
-                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                        ),
+                    Widget photoWidget = ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                       ),
                     );
+                    if (c.mustErase) {
+                      photoWidget = ValueListenableBuilder<double>(
+                        valueListenable: c.eraseProgress,
+                        builder: (_, p, child) => Opacity(
+                          opacity: (1.0 - p * 0.95).clamp(0.0, 1.0),
+                          child: child,
+                        ),
+                        child: photoWidget,
+                      );
+                    }
+                    return Positioned.fill(child: photoWidget);
                   } catch (_) {
                     return const SizedBox.shrink();
                   }

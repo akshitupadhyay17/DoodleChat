@@ -240,6 +240,11 @@ class DoodleController extends ChangeNotifier {
     if (forErasing && eraserPx < 30.0) {
       eraserPx = defaultEraserScreenRadius;
     }
+    if (c.backgroundPhoto != null && c.backgroundPhoto!.isNotEmpty && forErasing) {
+      _remainingPhotoUnits = _photoUnits;
+    } else {
+      _remainingPhotoUnits = 0;
+    }
     _initialUnits = _remainingUnits();
     eraseProgress.value = 0;
     committed.bump();
@@ -254,6 +259,7 @@ class DoodleController extends ChangeNotifier {
     shapes = [];
     selection = null;
     backgroundPhoto = null;
+    _remainingPhotoUnits = 0;
     _undoStack.clear();
     _redoStack.clear();
     _live.clear();
@@ -759,16 +765,29 @@ class DoodleController extends ChangeNotifier {
     shapes.removeWhere((sh) => sh.rect.inflate(r).contains(c));
     if (texts.length != tBefore || emojis.length != eBefore || shapes.length != shBefore) modified = true;
 
+    if (backgroundPhoto != null && backgroundPhoto!.isNotEmpty && mustErase) {
+      if (_remainingPhotoUnits > 0) {
+        _remainingPhotoUnits = (_remainingPhotoUnits - (eraserPx * 4.0)).clamp(0.0, _photoUnits);
+        modified = true;
+      }
+    }
+
     if (!modified) return;
     onEraseHit?.call();
     committed.bump();
     _updateProgress();
   }
 
+  static const double _photoUnits = 1200.0;
+  double _remainingPhotoUnits = 0;
+
   double _remainingUnits() {
     double total = (texts.length + emojis.length + shapes.length) * _itemUnits;
     for (final s in strokes) {
       total += s.length;
+    }
+    if (backgroundPhoto != null && backgroundPhoto!.isNotEmpty && mustErase) {
+      total += _remainingPhotoUnits;
     }
     return total;
   }
@@ -780,21 +799,30 @@ class DoodleController extends ChangeNotifier {
       final remaining = _remainingUnits();
       eraseProgress.value = (1 - remaining / _initialUnits).clamp(0.0, 1.0);
       // Auto-sweep leftover crumbs so nobody hunts for the last pixel.
-      if (mustErase && remaining <= _initialUnits * 0.04 && !isEmpty) {
+      if (mustErase && remaining <= _initialUnits * 0.05 && !isEmpty) {
         strokes = [];
         texts = [];
         emojis = [];
         shapes = [];
+        _remainingPhotoUnits = 0;
+        backgroundPhoto = null;
         committed.bump();
       }
     }
     onEraseProgress?.call(eraseProgress.value);
-    if (mustErase && isEmpty && !_completed) {
+    if (mustErase && (isEmpty || eraseProgress.value >= 0.98) && !_completed) {
       _completed = true;
       _ignorePointerUntilUp = true;
       _live.clear();
       eraserPos = null;
+      strokes = [];
+      texts = [];
+      emojis = [];
+      shapes = [];
+      _remainingPhotoUnits = 0;
+      backgroundPhoto = null;
       live.bump();
+      committed.bump();
       eraseProgress.value = 1;
       onErasedAll?.call();
       notifyListeners();
@@ -810,6 +838,9 @@ class DoodleController extends ChangeNotifier {
     strokes = [];
     texts = [];
     emojis = [];
+    shapes = [];
+    _remainingPhotoUnits = 0;
+    backgroundPhoto = null;
     committed.bump();
     _updateProgress();
   }
