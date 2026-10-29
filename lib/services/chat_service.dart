@@ -193,7 +193,7 @@ class ChatService extends ChangeNotifier {
       final port = (uri.hasPort && uri.port != 0) ? ':${uri.port}' : '';
       return '$scheme://$host$port';
     }
-    return const String.fromEnvironment('DOODLE_SERVER', defaultValue: 'ws://192.168.1.26:8080');
+    return const String.fromEnvironment('DOODLE_SERVER', defaultValue: 'wss://doodlechat.onrender.com');
   }
 
   /// Safe to call as often as you like.
