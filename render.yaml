@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: doodlechat-relay
+    env: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node relay.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 10000

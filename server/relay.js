@@ -45,6 +45,54 @@ const pairKey = (a, b) => [norm(a), norm(b)].sort().join('<>');
 const reqKey = (from, to) => `${norm(from)}>REQ>${norm(to)}`;
 const norm = (u) => String(u || '').toLowerCase().trim().replace(/^@/, '').replace(/[^a-z0-9_.]/g, '');
 
+const DATA_DIR = path.join(__dirname, 'data');
+const STATE_FILE = path.join(DATA_DIR, 'state.json');
+
+function loadState() {
+  try {
+    if (!fs.existsSync(STATE_FILE)) return;
+    const raw = fs.readFileSync(STATE_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.profiles)) {
+      for (const p of data.profiles) if (p && p.username) profiles.set(p.username, p);
+    }
+    if (Array.isArray(data.friends)) {
+      for (const f of data.friends) friends.add(f);
+    }
+    if (Array.isArray(data.friendRequests)) {
+      for (const r of data.friendRequests) friendRequests.add(r);
+    }
+    if (Array.isArray(data.pending)) {
+      for (const [k, v] of data.pending) pending.set(k, v);
+    }
+    console.log(`Loaded persisted state: ${profiles.size} profiles, ${friends.size} friendships, ${pending.size} pending doodles`);
+  } catch (err) {
+    console.error('Failed to load state from disk:', err);
+  }
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      const data = {
+        profiles: [...profiles.values()],
+        friends: [...friends],
+        friendRequests: [...friendRequests],
+        pending: [...pending.entries()],
+      };
+      const tmp = STATE_FILE + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+      fs.renameSync(tmp, STATE_FILE);
+    } catch (err) {
+      console.error('Failed to save state to disk:', err);
+    }
+  }, 400);
+}
+
 function publicProfile(p) {
   return {
     username: p.username,
@@ -114,6 +162,12 @@ const gzCache = new Map();
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
 
+  if (url.pathname === '/healthz' || url.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ status: 'ok', uptime: process.uptime(), onlineUsers: sockets.size }));
+    return;
+  }
+
   if (url.pathname === '/api/check') {
     const u = norm(url.searchParams.get('u'));
     const cid = url.searchParams.get('cid') || '';
@@ -121,6 +175,12 @@ const server = http.createServer((req, res) => {
     const taken = !!p && p.clientId !== cid && sockets.has(u);
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify({ username: u, available: !!u && u.length >= 3 && !taken }));
+    return;
+  }
+
+  if (!fs.existsSync(WEB_DIR)) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<!DOCTYPE html><html><head><title>DoodleChat Relay</title><style>body{font-family:system-ui,sans-serif;text-align:center;padding:50px;background:#181820;color:#fff;}h1{color:#FFC72C;}</style></head><body><h1>🦆 DoodleChat Relay Server</h1><p>Realtime WebSocket Relay is active and healthy.</p></body></html>');
     return;
   }
 
@@ -221,6 +281,7 @@ wss.on('connection', (ws) => {
           avatarPhoto: data.avatarPhoto || null,
           bio: data.bio || 'Doodling away ✨',
         });
+        scheduleSave();
         sockets.set(username, ws);
         send(ws, {
           type: 'registered_success',
@@ -248,6 +309,7 @@ wss.on('connection', (ws) => {
         if (data.avatarPhoto !== undefined) p.avatarPhoto = data.avatarPhoto;
         if (data.bio) p.bio = data.bio;
         profiles.set(me, p);
+        scheduleSave();
         broadcastOnlineUsers();
         for (const f of friends) {
           const [a, b] = f.split('<>');
@@ -273,6 +335,7 @@ wss.on('connection', (ws) => {
           return;
         }
         friendRequests.add(reqKey(me, to));
+        scheduleSave();
         send(ws, { type: 'friend_request_sent', to });
         const senderProfile = publicProfile(profiles.get(me) || { username: me, name: me });
         sendTo(to, { type: 'incoming_friend_request', from: me, profile: senderProfile });
@@ -288,6 +351,7 @@ wss.on('connection', (ws) => {
         friendRequests.delete(reqKey(from, me));
         if (accept) {
           friends.add(pairKey(from, me));
+          scheduleSave();
           const myProfile = publicProfile(profiles.get(me) || { username: me, name: me });
           const theirProfile = publicProfile(profiles.get(from) || { username: from, name: from });
           sendTo(from, { type: 'friend_request_accepted', from: me, profile: myProfile });
@@ -324,6 +388,7 @@ wss.on('connection', (ws) => {
           return;
         }
         pending.set(key(me, to), { doodle: data.doodle, at: Date.now() });
+        scheduleSave();
         sendTo(to, { type: 'incoming_doodle', from: me, doodle: data.doodle });
         send(ws, { type: 'doodle_delivered', to, online: sockets.has(to) });
         console.log(`✎ @${me} → @${to} (${sockets.has(to) ? 'live' : 'queued'})`);
@@ -334,6 +399,7 @@ wss.on('connection', (ws) => {
         if (!me) return;
         const from = norm(data.to); // the original sender
         if (pending.delete(key(from, me))) {
+          scheduleSave();
           sendTo(from, { type: 'doodle_erased_ack', from: me });
           console.log(`✓ @${me} erased @${from}'s doodle`);
         }
@@ -384,6 +450,8 @@ setInterval(() => {
     try { ws.ping(); } catch (e) {}
   }
 }, 25000);
+
+loadState();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`DoodleChat HTTP + WebSocket server running on http://0.0.0.0:${PORT}`);

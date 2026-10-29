@@ -81,3 +81,7 @@ yarn-error.log*
 
 # Exceptions to flutter repo-level rules
 !.flutter
+
+# Local builds & server data
+*.apk
+server/data/
