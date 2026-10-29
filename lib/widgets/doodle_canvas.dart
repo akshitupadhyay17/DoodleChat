@@ -400,10 +400,10 @@ class _CommittedPainter extends CustomPainter {
     switch (s.brushType) {
       case DoodleBrushType.neon:
         // Instagram Neon Brush: Outer glow pass + inner white core pass
-        final glowRadius = (s.size * 0.75).clamp(8.0, 36.0);
+        final glowRadius = (s.size * 0.55).clamp(2.5, 65.0);
         final glowPaint = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = (s.size * 0.9).clamp(6.0, 42.0)
+          ..strokeWidth = (s.size * 0.85).clamp(2.5, 110.0)
           ..color = s.color.withOpacity(0.85)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius)
           ..isAntiAlias = true;
@@ -463,10 +463,10 @@ class _LivePainter extends CustomPainter {
 
       switch (c.brushType) {
         case DoodleBrushType.neon:
-          final glowRadius = (virtSize * 0.75).clamp(8.0, 36.0);
+          final glowRadius = (virtSize * 0.55).clamp(2.5, 65.0);
           final glowPaint = Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = (virtSize * 0.9).clamp(6.0, 42.0)
+            ..strokeWidth = (virtSize * 0.85).clamp(2.5, 110.0)
             ..color = c.color.withOpacity(0.85)
             ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius)
             ..isAntiAlias = true;

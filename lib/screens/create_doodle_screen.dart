@@ -11,7 +11,6 @@ import '../widgets/doodle_avatar.dart';
 import '../theme/app_theme.dart';
 import '../models/doodle_stroke.dart';
 import '../widgets/cartoon_emoji_renderer.dart';
-import '../widgets/find_friends_sheet.dart';
 
 /// Standalone doodle creator: DoodleUp!
 /// Modeled after Instagram Draw & Canva tools with full creative control:
@@ -548,36 +547,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             ),
                           const Spacer(),
                           InkWell(
-                            onTap: () {
-                              showFindFriendsSheet(context);
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF4081).withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFFF4081).withValues(alpha: 0.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.person_add_rounded, size: 14, color: Color(0xFFFF4081)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Add Friend',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFFFF4081),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          InkWell(
                             onTap: () => _showCreateGroupDialog(ctx),
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
@@ -664,22 +633,9 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Add friends by username or scan QR code to send doodles directly to them.',
+                                    'Search for a @username in the top search bar on Home to connect with friends.',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      showFindFriendsSheet(context);
-                                    },
-                                    icon: const Icon(Icons.person_add_rounded, size: 16),
-                                    label: const Text('Find & Add Friends'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.electricPink,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
                                   ),
                                 ],
                               ),
@@ -1268,104 +1224,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
     );
   }
 
-  void _showShapesSheet() {
-    final shapes = [
-      {'id': 'star', 'name': 'Star', 'icon': '⭐'},
-      {'id': 'heart', 'name': 'Heart', 'icon': '💖'},
-      {'id': 'circle', 'name': 'Circle', 'icon': '⭕'},
-      {'id': 'rect', 'name': 'Box', 'icon': '🔲'},
-      {'id': 'arrow', 'name': 'Arrow', 'icon': '➔'},
-      {'id': 'bubble', 'name': 'Bubble', 'icon': '💬'},
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('🔷', style: TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Canva Shapes',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF14141E),
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap any shape to stamp onto your canvas in active brush style',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF9EA3B5) : const Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: shapes.map((s) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _doodle.addShape(s['id']!);
-                        HapticFeedback.mediumImpact();
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: _doodle.color.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: _doodle.color.withOpacity(0.4)),
-                            ),
-                            child: Center(
-                              child: Text(s['icon']!, style: const TextStyle(fontSize: 22)),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            s['name']!,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showTextStudio() {
     final textCtrl = TextEditingController();
     String selectedFont = 'PatrickHand';
@@ -1442,6 +1300,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                           ),
                           onPressed: () {
                             setDlgState(() => hasBackground = !hasBackground);
+                            _doodle.syncLiveText(
+                              textCtrl.text,
+                              fontStyle: selectedFont,
+                              hasBackground: hasBackground,
+                              overrideColor: textColor,
+                            );
                             HapticFeedback.selectionClick();
                           },
                         ),
@@ -1453,7 +1317,15 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                     TextField(
                       controller: textCtrl,
                       autofocus: true,
-                      onChanged: (val) => setDlgState(() {}),
+                      onChanged: (val) {
+                        setDlgState(() {});
+                        _doodle.syncLiveText(
+                          val,
+                          fontStyle: selectedFont,
+                          hasBackground: hasBackground,
+                          overrideColor: textColor,
+                        );
+                      },
                       style: GoogleFonts.plusJakartaSans(
                         color: isDark ? Colors.white : const Color(0xFF14141E),
                         fontSize: 16,
@@ -1534,6 +1406,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               backgroundColor: isDark ? const Color(0xFF282834) : const Color(0xFFF0F0F2),
                               onSelected: (_) {
                                 setDlgState(() => selectedFont = f['id']!);
+                                _doodle.syncLiveText(
+                                  textCtrl.text,
+                                  fontStyle: selectedFont,
+                                  hasBackground: hasBackground,
+                                  overrideColor: textColor,
+                                );
                                 HapticFeedback.selectionClick();
                               },
                             ),
@@ -1564,6 +1442,12 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                             onTap: () {
                               setDlgState(() => textColor = c);
                               setState(() => _doodle.setColor(c));
+                              _doodle.syncLiveText(
+                                textCtrl.text,
+                                fontStyle: selectedFont,
+                                hasBackground: hasBackground,
+                                overrideColor: textColor,
+                              );
                               HapticFeedback.selectionClick();
                             },
                             child: Container(
@@ -2126,14 +2010,6 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
                               ),
                               Expanded(
                                 child: _buildBottomActionButton(
-                                  icon: Icons.interests_rounded,
-                                  label: 'Shapes',
-                                  color: const Color(0xFF6C5CE7),
-                                  onTap: _showShapesSheet,
-                                ),
-                              ),
-                              Expanded(
-                                child: _buildBottomActionButton(
                                   icon: Icons.emoji_emotions_rounded,
                                   label: 'Stickers',
                                   color: const Color(0xFFFFC72C),
@@ -2290,162 +2166,222 @@ class _CreateDoodleScreenState extends State<CreateDoodleScreen> {
   }
 
   Widget _buildInstagramVerticalBrushSlider(bool isDark) {
-    final isEraser = _doodle.eraser;
-    final minSize = isEraser ? 12.0 : 2.0;
-    final maxSize = isEraser ? 75.0 : 38.0;
-    final currentPx = _doodle.activeToolPx;
-    final fraction = ((currentPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
-    final activeColor = isEraser ? const Color(0xFFFFC72C) : _doodle.color;
+    return ListenableBuilder(
+      listenable: _doodle,
+      builder: (context, _) {
+        final isEraser = _doodle.eraser;
+        final minSize = isEraser ? 12.0 : 2.0;
+        final maxSize = isEraser ? 75.0 : 38.0;
+        final currentPx = _doodle.activeToolPx.clamp(minSize, maxSize);
+        final fraction = ((currentPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+        final activeColor = isEraser ? const Color(0xFFFFC72C) : _doodle.color;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalHeight = (constraints.maxHeight * 0.55).clamp(140.0, 220.0);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final totalHeight = (constraints.maxHeight * 0.58).clamp(140.0, 220.0);
+            const trackPad = 12.0;
+            final usableHeight = (totalHeight - trackPad * 2).clamp(40.0, totalHeight);
 
-        return Center(
-          child: SizedBox(
-            width: 80,
-            height: totalHeight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.centerLeft,
-              children: [
-                // Slider Track Capsule
-                GestureDetector(
-                  onVerticalDragStart: (_) => setState(() => _isDraggingBrushSlider = true),
-                  onVerticalDragEnd: (_) => setState(() => _isDraggingBrushSlider = false),
-                  onVerticalDragCancel: () => setState(() => _isDraggingBrushSlider = false),
-                  onVerticalDragUpdate: (details) {
-                    final box = context.findRenderObject() as RenderBox?;
-                    if (box == null) return;
-                    final local = box.globalToLocal(details.globalPosition);
-                    // dragging up increases size
-                    final rawFraction = 1.0 - (local.dy / totalHeight);
-                    final clamped = rawFraction.clamp(0.0, 1.0);
-                    final newSize = minSize + clamped * (maxSize - minSize);
-                    setState(() {
-                      _doodle.setBrush(newSize);
-                    });
-                  },
-                  child: Container(
-                    width: 28,
-                    height: totalHeight,
+            void updateFromDy(double dy) {
+              final rawFraction = 1.0 - ((dy - trackPad) / usableHeight);
+              final clamped = rawFraction.clamp(0.0, 1.0);
+              final newSize = minSize + clamped * (maxSize - minSize);
+              setState(() {
+                _doodle.setBrush(newSize);
+              });
+            }
+
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.black.withOpacity(0.45) : Colors.white.withOpacity(0.75),
-                      borderRadius: BorderRadius.circular(16),
+                      color: isDark ? Colors.black.withValues(alpha: 0.65) : Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1.5,
+                        color: activeColor.withValues(alpha: 0.5),
+                        width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.18),
-                          blurRadius: 10,
-                        ),
-                      ],
                     ),
+                    child: Text(
+                      '${currentPx.round()}px',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF14141E),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 40,
+                    height: totalHeight,
                     child: Stack(
-                      alignment: Alignment.bottomCenter,
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
                       children: [
-                        // Inner fill
-                        Container(
-                          width: 6,
-                          height: totalHeight * fraction,
-                          margin: const EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            color: activeColor,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        // Slider Thumb
-                        Positioned(
-                          bottom: (totalHeight - 24) * fraction,
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.25),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
+                        // Slider Track Capsule
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (details) {
+                            setState(() => _isDraggingBrushSlider = true);
+                            updateFromDy(details.localPosition.dy);
+                            HapticFeedback.selectionClick();
+                          },
+                          onTapUp: (_) => setState(() => _isDraggingBrushSlider = false),
+                          onTapCancel: () => setState(() => _isDraggingBrushSlider = false),
+                          onVerticalDragStart: (details) {
+                            setState(() => _isDraggingBrushSlider = true);
+                            updateFromDy(details.localPosition.dy);
+                            HapticFeedback.selectionClick();
+                          },
+                          onVerticalDragUpdate: (details) => updateFromDy(details.localPosition.dy),
+                          onVerticalDragEnd: (_) => setState(() => _isDraggingBrushSlider = false),
+                          onVerticalDragCancel: () => setState(() => _isDraggingBrushSlider = false),
+                          child: SizedBox(
+                            width: 40,
+                            height: totalHeight,
                             child: Center(
                               child: Container(
-                                width: 10,
-                                height: 10,
+                                width: 28,
+                                height: totalHeight,
                                 decoration: BoxDecoration(
-                                  color: activeColor,
-                                  shape: BoxShape.circle,
+                                  color: isDark
+                                      ? Colors.black.withValues(alpha: 0.55)
+                                      : Colors.white.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.22)
+                                        : Colors.black.withValues(alpha: 0.1),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.18),
+                                      blurRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  alignment: Alignment.bottomCenter,
+                                  children: [
+                                    // Inner fill
+                                    Positioned(
+                                      bottom: trackPad,
+                                      child: Container(
+                                        width: 6,
+                                        height: usableHeight * fraction,
+                                        decoration: BoxDecoration(
+                                          color: activeColor,
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                      ),
+                                    ),
+                                    // Slider Thumb
+                                    Positioned(
+                                      bottom: trackPad + usableHeight * fraction - 11,
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.25),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Container(
+                                            width: 10,
+                                            height: 10,
+                                            decoration: BoxDecoration(
+                                              color: activeColor,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
+
+                        // Live Preview Bubble (Pops out to the right when dragging)
+                        if (_isDraggingBrushSlider)
+                          Positioned(
+                            left: 44,
+                            bottom: (usableHeight * fraction).clamp(0.0, totalHeight - 48),
+                            child: IgnorePointer(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1B1B24) : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: activeColor,
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(2, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Exact brush or eraser preview circle
+                                    Container(
+                                      width: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 34.0),
+                                      height: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 34.0),
+                                      decoration: BoxDecoration(
+                                        color: isEraser ? Colors.white.withValues(alpha: 0.6) : _doodle.color,
+                                        shape: BoxShape.circle,
+                                        border: isEraser
+                                            ? Border.all(color: const Color(0xFFFFC72C), width: 2.0)
+                                            : null,
+                                        boxShadow: _doodle.brushType == DoodleBrushType.neon && !isEraser
+                                            ? [
+                                                BoxShadow(
+                                                  color: _doodle.color.withValues(alpha: 0.8),
+                                                  blurRadius: 8,
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${currentPx.round()}px',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                ),
-
-                // Live Preview Bubble (Pops out to the right when dragging)
-                if (_isDraggingBrushSlider)
-                  Positioned(
-                    left: 36,
-                    bottom: (totalHeight - 34) * fraction - 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1B1B24) : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(2, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Exact brush or eraser preview circle
-                          Container(
-                            width: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(6.0, 34.0),
-                            height: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(6.0, 34.0),
-                            decoration: BoxDecoration(
-                              color: isEraser ? Colors.white.withOpacity(0.6) : _doodle.color,
-                              shape: BoxShape.circle,
-                              border: isEraser
-                                  ? Border.all(color: const Color(0xFFFFC72C), width: 2.0)
-                                  : null,
-                              boxShadow: _doodle.brushType == DoodleBrushType.neon && !isEraser
-                                  ? [
-                                      BoxShadow(
-                                        color: _doodle.color.withOpacity(0.8),
-                                        blurRadius: 8,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_doodle.activeToolPx.round()}px',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
         );
       },
     );

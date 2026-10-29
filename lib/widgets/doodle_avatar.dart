@@ -68,9 +68,11 @@ class DoodleAvatar extends StatelessWidget {
 
     Widget avatarWithRing;
     if (hasStory) {
+      final isSeen = ChatService().isStorySeen(activeStory);
       avatarWithRing = GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();
+          ChatService().markStorySeen(activeStory);
           StoryViewerSheet.show(
             context,
             story: activeStory!,
@@ -78,6 +80,7 @@ class DoodleAvatar extends StatelessWidget {
             senderUsername: username,
             senderEmoji: emoji,
             senderColor: color,
+            senderPhoto: photoBase64,
             onReply: onStoryReply ??
                 () {
                   final chatService = ChatService();
@@ -111,18 +114,23 @@ class DoodleAvatar extends StatelessWidget {
         },
         child: Container(
           padding: const EdgeInsets.all(2.5),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: SweepGradient(
-              colors: [
-                AppTheme.electricPink,
-                AppTheme.cyberViolet,
-                AppTheme.electricCyan,
-                AppTheme.neonYellow,
-                AppTheme.electricPink,
-              ],
-            ),
-          ),
+          decoration: isSeen
+              ? BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark ? const Color(0xFF7D8498) : const Color(0xFFD1D5DB),
+                )
+              : const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: SweepGradient(
+                    colors: [
+                      AppTheme.electricPink,
+                      AppTheme.cyberViolet,
+                      AppTheme.electricCyan,
+                      AppTheme.neonYellow,
+                      AppTheme.electricPink,
+                    ],
+                  ),
+                ),
           child: Container(
             padding: const EdgeInsets.all(2.0),
             decoration: BoxDecoration(

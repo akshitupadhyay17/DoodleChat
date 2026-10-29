@@ -100,10 +100,8 @@ class _DoodleChatAppState extends State<DoodleChatApp> with WidgetsBindingObserv
         _toast(e.message ?? 'Erase the pending doodle first', color: const Color(0xFFFF4081));
         break;
       case ChatEventType.connectionLost:
-        _toast('Reconnecting…', color: const Color(0xFF636E72));
-        break;
       case ChatEventType.connectionRestored:
-        _toast('Back online ✨', color: const Color(0xFF00B894));
+        // Online/offline is indicated solely by the small green dot on profiles.
         break;
       case ChatEventType.registerError:
         _toast(e.message ?? 'That username is taken — pick another',

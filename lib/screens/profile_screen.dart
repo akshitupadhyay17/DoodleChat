@@ -610,37 +610,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: avatars.map((em) {
-                      final isSel = user.avatarEmoji == em && user.profilePicBase64 == null;
-                      return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setDlgState(() {
-                            user.avatarEmoji = em;
-                            user.profilePicBase64 = null;
-                          });
-                          setState(() {});
-                          ChatService().saveProfile();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isSel
-                                ? AppTheme.electricPink.withOpacity(0.2)
-                                : (isDark ? AppTheme.darkSurface : const Color(0xFFF3F4F8)),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSel ? AppTheme.electricPink : Colors.transparent,
-                              width: 1.8,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkSurface : const Color(0xFFF3F4F8),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                        width: 1,
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: avatars.map((em) {
+                          final isSel = user.avatarEmoji == em && user.profilePicBase64 == null;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setDlgState(() {
+                                  user.avatarEmoji = em;
+                                  user.profilePicBase64 = null;
+                                });
+                                setState(() {});
+                                ChatService().saveProfile();
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: isSel
+                                      ? AppTheme.electricPink.withValues(alpha: 0.2)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSel ? AppTheme.electricPink : Colors.transparent,
+                                    width: 1.8,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(em, style: const TextStyle(fontSize: 22)),
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(em, style: const TextStyle(fontSize: 22)),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -750,6 +771,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       emoji: user.avatarEmoji,
                       color: user.avatarColor,
                       photoBase64: user.profilePicBase64,
+                      isOnline: chatService.isConnected,
                       activeStory: user.activeStory,
                       displayName: 'You',
                       username: user.username,

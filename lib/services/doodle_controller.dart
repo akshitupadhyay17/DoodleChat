@@ -131,6 +131,9 @@ class DoodleController extends ChangeNotifier {
   List<DoodleEmojiItem> emojis = [];
   List<DoodleShapeItem> shapes = [];
   DoodleSelection? selection;
+  DoodleTextItem? _liveTypingText;
+  bool _liveTextCustomMoved = false;
+  bool _liveTextCustomScaled = false;
   String? backgroundPhoto;
   final List<_DoodleActionRecord> _undoStack = [];
   final List<_DoodleActionRecord> _redoStack = [];
@@ -258,6 +261,9 @@ class DoodleController extends ChangeNotifier {
     emojis = [];
     shapes = [];
     selection = null;
+    _liveTypingText = null;
+    _liveTextCustomMoved = false;
+    _liveTextCustomScaled = false;
     backgroundPhoto = null;
     _remainingPhotoUnits = 0;
     _undoStack.clear();
@@ -315,6 +321,11 @@ class DoodleController extends ChangeNotifier {
     color = c;
     eraser = false;
     stampEmoji = null;
+    if (_liveTypingText != null && texts.contains(_liveTypingText)) {
+      _liveTypingText!.color = c;
+      _liveTypingText!.invalidate();
+      committed.bump();
+    }
     notifyListeners();
   }
 
@@ -435,6 +446,9 @@ class DoodleController extends ChangeNotifier {
 
   void moveSelected(Offset delta) {
     if (selection == null) return;
+    if (selection!.text != null && selection!.text == _liveTypingText) {
+      _liveTextCustomMoved = true;
+    }
     selection!.moveBy(delta);
     committed.bump();
     notifyListeners();
@@ -442,6 +456,9 @@ class DoodleController extends ChangeNotifier {
 
   void scaleSelected(double factor) {
     if (selection == null) return;
+    if (selection!.text != null && selection!.text == _liveTypingText) {
+      _liveTextCustomScaled = true;
+    }
     selection!.scaleBy(factor);
     committed.bump();
     notifyListeners();
@@ -450,6 +467,11 @@ class DoodleController extends ChangeNotifier {
   void deleteSelected() {
     if (selection == null) return;
     if (selection!.text != null) {
+      if (selection!.text == _liveTypingText) {
+        _liveTypingText = null;
+        _liveTextCustomMoved = false;
+        _liveTextCustomScaled = false;
+      }
       texts.remove(selection!.text);
     } else if (selection!.emoji != null) {
       emojis.remove(selection!.emoji);
@@ -521,6 +543,105 @@ class DoodleController extends ChangeNotifier {
     return ideal;
   }
 
+  /// Real-time text-to-doodle sync while the user is actively typing.
+  void syncLiveText(
+    String rawText, {
+    String fontStyle = 'PatrickHand',
+    bool hasBackground = false,
+    Color? overrideColor,
+  }) {
+    final trimmed = rawText.trim();
+    if (trimmed.isEmpty) {
+      if (_liveTypingText != null) {
+        texts.remove(_liveTypingText);
+        _undoStack.removeWhere((r) => r.text == _liveTypingText);
+        if (selection?.text == _liveTypingText) {
+          selection = null;
+        }
+        _liveTypingText = null;
+        _liveTextCustomMoved = false;
+        _liveTextCustomScaled = false;
+        committed.bump();
+        notifyListeners();
+      }
+      return;
+    }
+
+    final activeColor = overrideColor ?? (eraser ? const Color(0xFFFFC72C) : color);
+    final autoFontSize = computeAutoScaledFontSize(trimmed, fontStyle);
+
+    if (_liveTypingText == null || !texts.contains(_liveTypingText)) {
+      final testPainter = TextPainter(
+        text: TextSpan(
+          text: trimmed,
+          style: doodleTextStyle(fontStyle, autoFontSize, activeColor),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: math.max(120, kVirtualWidth - 48));
+
+      final textW = testPainter.width;
+      final textH = testPainter.height;
+      final posX = ((kVirtualWidth - textW) / 2).clamp(24.0, math.max(24.0, kVirtualWidth - textW - 24.0)).toDouble();
+      final posY = ((viewHeightVirtual - textH) * 0.38).clamp(60.0, math.max(60.0, viewHeightVirtual - textH - 60.0)).toDouble();
+
+      final item = DoodleTextItem(
+        text: trimmed,
+        position: Offset(posX, posY),
+        color: activeColor,
+        fontSize: autoFontSize,
+        fontStyle: fontStyle,
+        hasBackground: hasBackground,
+      );
+      _liveTypingText = item;
+      _liveTextCustomMoved = false;
+      _liveTextCustomScaled = false;
+      texts.add(item);
+      _undoStack.add(_DoodleActionRecord.text(item));
+      _redoStack.clear();
+      committed.bump();
+      notifyListeners();
+    } else {
+      final item = _liveTypingText!;
+      item.text = trimmed;
+      item.color = activeColor;
+      item.fontStyle = fontStyle;
+      item.hasBackground = hasBackground;
+      if (!_liveTextCustomScaled) {
+        item.fontSize = autoFontSize;
+      }
+      item.invalidate();
+
+      if (!_liveTextCustomMoved) {
+        final testPainter = TextPainter(
+          text: TextSpan(
+            text: trimmed,
+            style: doodleTextStyle(fontStyle, item.fontSize, activeColor),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: math.max(120, kVirtualWidth - 48));
+
+        final textW = testPainter.width;
+        final textH = testPainter.height;
+        final posX = ((kVirtualWidth - textW) / 2).clamp(24.0, math.max(24.0, kVirtualWidth - textW - 24.0)).toDouble();
+        final posY = ((viewHeightVirtual - textH) * 0.38).clamp(60.0, math.max(60.0, viewHeightVirtual - textH - 60.0)).toDouble();
+        item.position = Offset(posX, posY);
+        item.invalidate();
+      }
+      committed.bump();
+      notifyListeners();
+    }
+  }
+
+  /// Locks in the current live-typed text on the canvas so a new text item can be started.
+  void commitLiveText() {
+    if (_liveTypingText == null) return;
+    _liveTypingText = null;
+    _liveTextCustomMoved = false;
+    _liveTextCustomScaled = false;
+    committed.bump();
+    notifyListeners();
+  }
+
   void addText(
     String text, [
     String fontStyle = 'PatrickHand',
@@ -529,6 +650,18 @@ class DoodleController extends ChangeNotifier {
   ]) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+
+    if (_liveTypingText != null && texts.contains(_liveTypingText)) {
+      syncLiveText(
+        trimmed,
+        fontStyle: fontStyle,
+        hasBackground: hasBackground,
+      );
+      final committedItem = _liveTypingText!;
+      commitLiveText();
+      selectText(committedItem);
+      return;
+    }
 
     final fontSize = customFontSize ?? computeAutoScaledFontSize(trimmed, fontStyle);
 
@@ -704,7 +837,7 @@ class DoodleController extends ChangeNotifier {
     }
     if (_live.isNotEmpty) {
       final s = DoodleStroke(
-        points: List<Offset>.from(_live),
+        points: densify(List<Offset>.from(_live), maxGap: 6.0),
         color: color,
         size: brushPx / scale,
         brushType: brushType,
@@ -751,19 +884,74 @@ class DoodleController extends ChangeNotifier {
       if (cur.isNotEmpty) (segs ??= []).add(cur);
       for (final seg in segs ?? const <List<Offset>>[]) {
         if (seg.length >= 2) {
-          next.add(DoodleStroke(points: seg, color: s.color, size: s.size));
+          next.add(
+            DoodleStroke(
+              points: seg,
+              color: s.color,
+              size: s.size,
+              isEraser: s.isEraser,
+              brushType: s.brushType,
+            ),
+          );
         }
       }
     }
-    if (modified) strokes = next;
+
+    // Also allow partial erasing of shapes by splitting touched shapes into strokes
+    final remainingShapes = <DoodleShapeItem>[];
+    for (final sh in shapes) {
+      if (!sh.rect.inflate(r).contains(c)) {
+        remainingShapes.add(sh);
+        continue;
+      }
+      final shStroke = sh.toStroke();
+      List<List<Offset>>? segs;
+      List<Offset> cur = [];
+      bool hit = false;
+      for (final p in shStroke.points) {
+        final dx = p.dx - c.dx, dy = p.dy - c.dy;
+        if (dx * dx + dy * dy <= r2) {
+          hit = true;
+          if (cur.isNotEmpty) {
+            (segs ??= []).add(cur);
+            cur = [];
+          }
+        } else {
+          cur.add(p);
+        }
+      }
+      if (!hit) {
+        remainingShapes.add(sh);
+        continue;
+      }
+      modified = true;
+      if (selection?.shape == sh) {
+        selection = null;
+      }
+      if (cur.isNotEmpty) (segs ??= []).add(cur);
+      for (final seg in segs ?? const <List<Offset>>[]) {
+        if (seg.length >= 2) {
+          next.add(
+            DoodleStroke(
+              points: seg,
+              color: shStroke.color,
+              size: shStroke.size,
+              brushType: shStroke.brushType,
+            ),
+          );
+        }
+      }
+    }
+    if (modified) {
+      strokes = next;
+      shapes = remainingShapes;
+    }
 
     final tBefore = texts.length;
     texts.removeWhere((t) => t.rect.inflate(r).contains(c));
     final eBefore = emojis.length;
     emojis.removeWhere((e) => e.rect.inflate(r).contains(c));
-    final shBefore = shapes.length;
-    shapes.removeWhere((sh) => sh.rect.inflate(r).contains(c));
-    if (texts.length != tBefore || emojis.length != eBefore || shapes.length != shBefore) modified = true;
+    if (texts.length != tBefore || emojis.length != eBefore) modified = true;
 
     if (backgroundPhoto != null && backgroundPhoto!.isNotEmpty && mustErase) {
       if (_remainingPhotoUnits > 0) {

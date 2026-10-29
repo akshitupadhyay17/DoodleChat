@@ -87,8 +87,22 @@ class _ChatScreenState extends State<ChatScreen> {
     _service.activeChat = _contact.username;
     _service.addListener(_syncFromService);
     _eventSub = _service.events.listen(_onEvent);
-    _textCtrl.addListener(() => setState(() {}));
+    _textCtrl.addListener(_onTextChanged);
     _syncFromService();
+  }
+
+  void _onTextChanged() {
+    if (!mounted) return;
+    if (!_doodle.mustErase && !_doodle.locked) {
+      _doodle.syncLiveText(
+        _textCtrl.text,
+        fontStyle: _selectedDoodleFont,
+      );
+      if (_textCtrl.text.trim().isNotEmpty) {
+        _markDrawing();
+      }
+    }
+    setState(() {});
   }
 
   @override
@@ -276,7 +290,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void _addText(String text) {
     if (text.trim().isEmpty) return;
     _doodle.color = _doodle.eraser ? AppTheme.duckYellow : _doodle.color;
-    _doodle.addText(text, _selectedDoodleFont);
+    _doodle.syncLiveText(text, fontStyle: _selectedDoodleFont);
+    _doodle.commitLiveText();
     _textCtrl.clear();
     _markDrawing();
     HapticFeedback.lightImpact();
@@ -721,9 +736,9 @@ class _ChatScreenState extends State<ChatScreen> {
                               : DoodleCanvas(controller: _doodle),
 
                           // Instagram Left Vertical Brush-Size & Eraser Slider
-                          if (!isSentWaiting && !isBlocked)
+                          if (!isSentWaiting && !isMustErase && !isBlocked)
                             Positioned(
-                              left: 12,
+                              left: 10,
                               top: 20,
                               bottom: 20,
                               child: _buildInstagramVerticalBrushSlider(isDark),
@@ -997,10 +1012,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       ).animate(onPlay: (c) => c.repeat(reverse: true)).fade(begin: 0.45, end: 1, duration: 600.ms);
                     }
                     return Text(
-                      _contact.isOnline ? 'Online • Ephemeral mode' : _contact.lastActive,
+                      '@${_contact.username}',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        color: _contact.isOnline ? const Color(0xFF00B894) : Colors.grey,
+                        color: Colors.grey,
                       ),
                     );
                   },
@@ -1472,7 +1487,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
               const SizedBox(height: 5),
 
-              // Row 3: Canva Studio Creative Elements (Photo, Text, Shapes, Stickers, Clear)
+              // Row 3: Canva Studio Creative Elements (Photo, Text, Stickers, Clear)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
                 decoration: BoxDecoration(
@@ -1502,14 +1517,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         label: 'Text',
                         color: const Color(0xFF00CEC9),
                         onTap: _showTextStudio,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildBottomActionButton(
-                        icon: Icons.interests_rounded,
-                        label: 'Shapes',
-                        color: const Color(0xFF6C5CE7),
-                        onTap: _showShapesSheet,
                       ),
                     ),
                     Expanded(
@@ -1661,141 +1668,209 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildInstagramVerticalBrushSlider(bool isDark) {
-    final isEraser = _doodle.eraser;
-    final minSize = isEraser ? 12.0 : 2.0;
-    final maxSize = isEraser ? 75.0 : 38.0;
-    final currentPx = _doodle.activeToolPx;
-    final fraction = ((currentPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
-    final activeColor = isEraser ? const Color(0xFFFFC72C) : _doodle.color;
+    return ListenableBuilder(
+      listenable: _doodle,
+      builder: (context, _) {
+        final isEraser = _doodle.eraser;
+        final minSize = isEraser ? 12.0 : 2.0;
+        final maxSize = isEraser ? 75.0 : 38.0;
+        final currentPx = _doodle.activeToolPx.clamp(minSize, maxSize);
+        final fraction = ((currentPx - minSize) / (maxSize - minSize)).clamp(0.0, 1.0);
+        final activeColor = isEraser ? const Color(0xFFFFC72C) : _doodle.color;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalHeight = (constraints.maxHeight * 0.55).clamp(120.0, 200.0);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final totalHeight = (constraints.maxHeight * 0.58).clamp(130.0, 210.0);
+            const trackPad = 12.0;
+            final usableHeight = (totalHeight - trackPad * 2).clamp(40.0, totalHeight);
 
-        return Center(
-          child: SizedBox(
-            width: 70,
-            height: totalHeight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.centerLeft,
-              children: [
-                GestureDetector(
-                  onVerticalDragStart: (_) => setState(() => _isDraggingBrushSlider = true),
-                  onVerticalDragEnd: (_) => setState(() => _isDraggingBrushSlider = false),
-                  onVerticalDragCancel: () => setState(() => _isDraggingBrushSlider = false),
-                  onVerticalDragUpdate: (details) {
-                    final box = context.findRenderObject() as RenderBox?;
-                    if (box == null) return;
-                    final local = box.globalToLocal(details.globalPosition);
-                    final rawFraction = 1.0 - (local.dy / totalHeight);
-                    final clamped = rawFraction.clamp(0.0, 1.0);
-                    final newSize = minSize + clamped * (maxSize - minSize);
-                    setState(() {
-                      _doodle.setBrush(newSize);
-                    });
-                  },
-                  child: Container(
-                    width: 26,
-                    height: totalHeight,
+            void updateFromDy(double dy) {
+              final rawFraction = 1.0 - ((dy - trackPad) / usableHeight);
+              final clamped = rawFraction.clamp(0.0, 1.0);
+              final newSize = minSize + clamped * (maxSize - minSize);
+              setState(() {
+                _doodle.setBrush(newSize);
+              });
+            }
+
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(14),
+                      color: isDark ? Colors.black.withValues(alpha: 0.65) : Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        width: 1.5,
+                        color: activeColor.withValues(alpha: 0.5),
+                        width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                        ),
-                      ],
                     ),
+                    child: Text(
+                      '${currentPx.round()}px',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF14141E),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 38,
+                    height: totalHeight,
                     child: Stack(
-                      alignment: Alignment.bottomCenter,
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
                       children: [
-                        Container(
-                          width: 5,
-                          height: totalHeight * fraction,
-                          margin: const EdgeInsets.only(bottom: 5),
-                          decoration: BoxDecoration(
-                            color: activeColor,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: (totalHeight - 22) * fraction,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (details) {
+                            setState(() => _isDraggingBrushSlider = true);
+                            updateFromDy(details.localPosition.dy);
+                            HapticFeedback.selectionClick();
+                          },
+                          onTapUp: (_) => setState(() => _isDraggingBrushSlider = false),
+                          onTapCancel: () => setState(() => _isDraggingBrushSlider = false),
+                          onVerticalDragStart: (details) {
+                            setState(() => _isDraggingBrushSlider = true);
+                            updateFromDy(details.localPosition.dy);
+                            HapticFeedback.selectionClick();
+                          },
+                          onVerticalDragUpdate: (details) => updateFromDy(details.localPosition.dy),
+                          onVerticalDragEnd: (_) => setState(() => _isDraggingBrushSlider = false),
+                          onVerticalDragCancel: () => setState(() => _isDraggingBrushSlider = false),
+                          child: SizedBox(
+                            width: 38,
+                            height: totalHeight,
                             child: Center(
                               child: Container(
-                                width: 8,
-                                height: 8,
+                                width: 28,
+                                height: totalHeight,
                                 decoration: BoxDecoration(
-                                  color: activeColor,
-                                  shape: BoxShape.circle,
+                                  color: isDark
+                                      ? Colors.black.withValues(alpha: 0.55)
+                                      : Colors.white.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.22)
+                                        : Colors.black.withValues(alpha: 0.1),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  alignment: Alignment.bottomCenter,
+                                  children: [
+                                    Positioned(
+                                      bottom: trackPad,
+                                      child: Container(
+                                        width: 6,
+                                        height: usableHeight * fraction,
+                                        decoration: BoxDecoration(
+                                          color: activeColor,
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      bottom: trackPad + usableHeight * fraction - 11,
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.3),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Container(
+                                            width: 10,
+                                            height: 10,
+                                            decoration: BoxDecoration(
+                                              color: activeColor,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
+
+                        if (_isDraggingBrushSlider)
+                          Positioned(
+                            left: 44,
+                            bottom: (usableHeight * fraction).clamp(0.0, totalHeight - 48),
+                            child: IgnorePointer(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E1E26) : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.28),
+                                      blurRadius: 10,
+                                      offset: const Offset(2, 2),
+                                    ),
+                                  ],
+                                  border: Border.all(
+                                    color: activeColor,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 36.0),
+                                      height: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 36.0),
+                                      decoration: BoxDecoration(
+                                        color: isEraser ? Colors.white.withValues(alpha: 0.6) : _doodle.color,
+                                        shape: BoxShape.circle,
+                                        border: isEraser
+                                            ? Border.all(color: const Color(0xFFFFC72C), width: 1.5)
+                                            : null,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${currentPx.round()}px',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                ),
-
-                if (_isDraggingBrushSlider)
-                  Positioned(
-                    left: 36,
-                    bottom: (totalHeight - 48) * fraction,
-                    child: Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 10,
-                            offset: const Offset(2, 2),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: activeColor,
-                          width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 36.0),
-                          height: (isEraser ? _doodle.eraserScreenRadius * 0.75 : _doodle.brushPx).clamp(4.0, 36.0),
-                          decoration: BoxDecoration(
-                            color: isEraser ? Colors.white.withOpacity(0.6) : _doodle.color,
-                            shape: BoxShape.circle,
-                            border: isEraser
-                                ? Border.all(color: const Color(0xFFFFC72C), width: 1.5)
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -1880,105 +1955,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _showShapesSheet() {
-    final shapes = [
-      {'id': 'star', 'name': 'Star', 'icon': '⭐'},
-      {'id': 'heart', 'name': 'Heart', 'icon': '💖'},
-      {'id': 'circle', 'name': 'Circle', 'icon': '⭕'},
-      {'id': 'rect', 'name': 'Box', 'icon': '🔲'},
-      {'id': 'arrow', 'name': 'Arrow', 'icon': '➔'},
-      {'id': 'bubble', 'name': 'Bubble', 'icon': '💬'},
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('🔷', style: TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Canva Shapes',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : const Color(0xFF14141E),
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap any shape to add directly onto your canvas',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: isDark ? const Color(0xFF9EA3B5) : const Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: shapes.map((s) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _doodle.addShape(s['id']!);
-                        _markDrawing();
-                        HapticFeedback.mediumImpact();
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: _doodle.color.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Center(
-                              child: Text(s['icon']!, style: const TextStyle(fontSize: 24)),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            s['name']!,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showTextStudio() {
     final textCtrl = TextEditingController();
     String selectedFont = 'PatrickHand';
@@ -2054,6 +2030,12 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           onPressed: () {
                             setDlgState(() => hasBackground = !hasBackground);
+                            _doodle.syncLiveText(
+                              textCtrl.text,
+                              fontStyle: selectedFont,
+                              hasBackground: hasBackground,
+                              overrideColor: textColor,
+                            );
                             HapticFeedback.selectionClick();
                           },
                         ),
@@ -2063,7 +2045,18 @@ class _ChatScreenState extends State<ChatScreen> {
                     TextField(
                       controller: textCtrl,
                       autofocus: true,
-                      onChanged: (val) => setDlgState(() {}),
+                      onChanged: (val) {
+                        setDlgState(() {});
+                        _doodle.syncLiveText(
+                          val,
+                          fontStyle: selectedFont,
+                          hasBackground: hasBackground,
+                          overrideColor: textColor,
+                        );
+                        if (val.trim().isNotEmpty) {
+                          _markDrawing();
+                        }
+                      },
                       style: GoogleFonts.plusJakartaSans(
                         color: isDark ? Colors.white : const Color(0xFF14141E),
                         fontSize: 16,
@@ -2095,6 +2088,12 @@ class _ChatScreenState extends State<ChatScreen> {
                           return GestureDetector(
                             onTap: () {
                               setDlgState(() => selectedFont = f['id']!);
+                              _doodle.syncLiveText(
+                                textCtrl.text,
+                                fontStyle: selectedFont,
+                                hasBackground: hasBackground,
+                                overrideColor: textColor,
+                              );
                               HapticFeedback.selectionClick();
                             },
                             child: Container(
@@ -2161,7 +2160,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('Clear Canvas?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-          content: const Text('This will erase all strokes, texts, shapes and stickers from this doodle.'),
+          content: const Text('This will erase all strokes, texts, and stickers from this doodle.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -2169,6 +2168,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             ElevatedButton(
               onPressed: () {
+                _textCtrl.clear();
                 _doodle.clear();
                 Navigator.pop(ctx);
                 HapticFeedback.heavyImpact();
@@ -2213,6 +2213,12 @@ class _ChatScreenState extends State<ChatScreen> {
                             ? 'Gaegu'
                             : (_selectedDoodleFont == 'Gaegu' ? 'Caveat' : 'PatrickHand');
                       });
+                      if (_textCtrl.text.trim().isNotEmpty) {
+                        _doodle.syncLiveText(
+                          _textCtrl.text,
+                          fontStyle: _selectedDoodleFont,
+                        );
+                      }
                       HapticFeedback.selectionClick();
                     },
                     child: Container(

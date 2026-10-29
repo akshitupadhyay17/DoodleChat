@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +7,7 @@ import '../models/doodle_group.dart';
 import '../services/chat_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/doodle_avatar.dart';
-import '../widgets/find_friends_sheet.dart';
+import '../widgets/find_friends_sheet.dart' show parseHandle;
 import '../widgets/story_viewer_sheet.dart';
 import 'chat_screen.dart';
 import 'create_doodle_screen.dart';
@@ -26,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _activeListTab = 0; // 0 = Chats, 1 = Groups
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _searchDebounce;
+  bool _isSearchingPeople = false;
+  List<Map<String, dynamic>> _searchedPeople = [];
 
   @override
   void initState() {
@@ -37,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     ChatService().removeListener(_onServiceUpdate);
     _searchController.dispose();
     super.dispose();
@@ -46,8 +51,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
-  void _showAddFriendDialog() {
-    showFindFriendsSheet(context);
+  void _onSearchChanged(String val) {
+    setState(() {
+      _searchQuery = val;
+    });
+    _searchDebounce?.cancel();
+    final q = val.trim();
+    if (q.isEmpty) {
+      setState(() {
+        _isSearchingPeople = false;
+        _searchedPeople = [];
+      });
+      return;
+    }
+    setState(() => _isSearchingPeople = true);
+    _searchDebounce = Timer(const Duration(milliseconds: 220), () async {
+      final results = await ChatService().searchUsers(q);
+      if (!mounted || _searchQuery.trim() != q) return;
+      setState(() {
+        _searchedPeople = results;
+        _isSearchingPeople = false;
+      });
+    });
   }
 
   void _showCreateGroupDialog() {
@@ -285,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
               : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Sleek Top App Bar (Instagram/Snapchat style)
+                  // Sleek Top App Bar (Instagram style — no separate Add Friends popup button)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                     child: Row(
@@ -331,53 +356,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-
-                        // Action Buttons: Find/Add Friends
-                        GestureDetector(
-                          onTap: _showAddFriendDialog,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppTheme.darkCard : Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.person_add_rounded,
-                                  size: 15,
-                                  color: AppTheme.electricPink,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  'Add Friends',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : const Color(0xFF0E1017),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
 
-                  // Spotlight iOS Search Bar
+                  // Instagram-style Top Search Bar (search people, @usernames, chats, groups directly)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                     child: Container(
@@ -390,7 +373,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: TextField(
                         controller: _searchController,
-                        onChanged: (val) => setState(() => _searchQuery = val),
+                        onChanged: _onSearchChanged,
+                        autocorrect: false,
                         style: GoogleFonts.plusJakartaSans(fontSize: 14),
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF8A90A6)),
@@ -399,11 +383,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF8A90A6)),
                                   onPressed: () {
                                     _searchController.clear();
-                                    setState(() => _searchQuery = '');
+                                    _onSearchChanged('');
                                   },
                                 )
                               : null,
-                          hintText: 'Search chats, doodles, groups...',
+                          hintText: 'Search people, @username, chats...',
                           hintStyle: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             color: const Color(0xFF8A90A6),
@@ -416,7 +400,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Instagram / Snapchat Stories Bar
-                  _buildStoriesBar(context, chatService, user, isDark),
+                  if (_searchQuery.trim().isEmpty)
+                    _buildStoriesBar(context, chatService, user, isDark),
 
                   // Filter Pills: All Chats vs Groups
                   Padding(
@@ -473,12 +458,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                       children: [
-                        // You Card
-                        _buildYouCard(user, isDark),
-                        const SizedBox(height: 12),
+                        if (_searchQuery.trim().isEmpty) ...[
+                          // You Card
+                          _buildYouCard(user, isDark),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // Direct Instagram-style People Search Results when typing in top search bar
+                        if (_searchQuery.trim().isNotEmpty)
+                          _buildDirectPeopleSearchSection(context, chatService, isDark),
 
                         // Incoming Friend Requests
-                        if (_activeListTab == 0) ...[
+                        if (_activeListTab == 0 && _searchQuery.trim().isEmpty) ...[
                           _buildIncomingRequestsSection(context, chatService, isDark),
                         ],
 
@@ -660,6 +651,7 @@ class _HomeScreenState extends State<HomeScreen> {
           GestureDetector(
             onTap: () {
               if (user.hasActiveStory) {
+                chatService.markStorySeen(user.activeStory);
                 StoryViewerSheet.show(
                   context,
                   story: user.activeStory!,
@@ -687,6 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         emoji: user.avatarEmoji,
                         color: user.avatarColor,
                         photoBase64: user.profilePicBase64,
+                        isOnline: chatService.isConnected,
                         activeStory: user.activeStory,
                         displayName: 'You',
                         username: user.username,
@@ -734,6 +727,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ...contactsWithStories.map((contact) {
             return GestureDetector(
               onTap: () {
+                chatService.markStorySeen(contact.activeStory);
                 StoryViewerSheet.show(
                   context,
                   story: contact.activeStory!,
@@ -764,6 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       emoji: contact.avatarEmoji,
                       color: contact.avatarColor,
                       photoBase64: contact.avatarPhotoBase64,
+                      isOnline: contact.isOnline,
                       activeStory: contact.activeStory,
                       displayName: contact.name,
                       username: contact.username,
@@ -829,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
             emoji: user.avatarEmoji,
             color: user.avatarColor,
             photoBase64: user.profilePicBase64,
-            isOnline: true,
+            isOnline: ChatService().isConnected,
             activeStory: user.activeStory,
             displayName: 'You',
             username: user.username,
@@ -893,6 +888,243 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDirectPeopleSearchSection(BuildContext context, ChatService chatService, bool isDark) {
+    final cleanHandle = parseHandle(_searchQuery);
+    final rawLower = _searchQuery.trim().toLowerCase().replaceAll('@', '');
+    final myUsername = chatService.currentUser.username.toLowerCase();
+
+    // Merge onlinePeers that match query + _searchedPeople (deduplicated by username)
+    final peopleByUsername = <String, Map<String, dynamic>>{};
+    for (final p in chatService.onlinePeers) {
+      final u = (p['username'] ?? '').toString().toLowerCase().trim();
+      final n = (p['name'] ?? '').toString().toLowerCase();
+      if (u.isEmpty || u == myUsername) continue;
+      if ((cleanHandle.isNotEmpty && u.contains(cleanHandle)) ||
+          (rawLower.isNotEmpty && n.contains(rawLower))) {
+        peopleByUsername[u] = p;
+      }
+    }
+    for (final p in _searchedPeople) {
+      final u = (p['username'] ?? '').toString().toLowerCase().trim();
+      if (u.isEmpty || u == myUsername) continue;
+      peopleByUsername[u] = p;
+    }
+
+    final matchedPeople = peopleByUsername.values.toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+          child: Row(
+            children: [
+              Text(
+                'PEOPLE',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
+                  color: const Color(0xFF8A90A6),
+                ),
+              ),
+              if (_isSearchingPeople) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.electricPink,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (matchedPeople.isEmpty && _isSearchingPeople && cleanHandle.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+              ),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.2, color: AppTheme.electricPink),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Searching for @$cleanHandle…',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF8A90A6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (matchedPeople.isEmpty && !_isSearchingPeople && cleanHandle.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.person_search_rounded, size: 20, color: Color(0xFF8A90A6)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    cleanHandle == myUsername
+                        ? "That's your handle (@$cleanHandle)"
+                        : 'No user found for @$cleanHandle',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF8A90A6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...matchedPeople.map((peer) {
+            final username = (peer['username'] ?? '').toString().toLowerCase().trim();
+            final displayName = (peer['name'] ?? username).toString();
+            final emoji = peer['avatarEmoji']?.toString() ?? '✨';
+            final photo = peer['avatarPhoto']?.toString();
+            final bio = peer['bio']?.toString() ?? 'Doodle user';
+            final isOnline = peer['online'] == true;
+
+            final existing = chatService.contacts.cast<ChatContact?>().firstWhere(
+                  (c) => c?.username.toLowerCase() == username,
+                  orElse: () => null,
+                );
+            final isAccepted = existing != null && existing.friendshipStatus == FriendshipStatus.accepted;
+            final isPending = existing != null && existing.friendshipStatus == FriendshipStatus.requestSent;
+            final isReceived = existing != null && existing.friendshipStatus == FriendshipStatus.requestReceived;
+
+            String actionLabel = 'Add';
+            Color actionBg = AppTheme.electricPink;
+            if (isAccepted) {
+              actionLabel = 'Chat';
+            } else if (isReceived) {
+              actionLabel = 'Accept';
+              actionBg = AppTheme.acidLime;
+            } else if (isPending) {
+              actionLabel = 'Requested';
+              actionBg = AppTheme.cyberViolet;
+            }
+
+            Future<void> handleTap() async {
+              HapticFeedback.lightImpact();
+              final nav = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              if (isAccepted) {
+                nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+              } else if (isReceived) {
+                chatService.respondFriendRequest(username, true);
+                nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+              } else if (isPending) {
+                nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: existing)));
+              } else {
+                await chatService.sendFriendRequest(username, profile: peer);
+                final contact = await chatService.ensureContact(
+                  username,
+                  profile: peer,
+                  initialStatus: FriendshipStatus.requestSent,
+                );
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Doodle request sent to @$username!',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                    ),
+                    backgroundColor: AppTheme.electricPink,
+                  ),
+                );
+                nav.push(MaterialPageRoute(builder: (_) => ChatScreen(contact: contact)));
+              }
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                ),
+              ),
+              child: ListTile(
+                onTap: handleTap,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                leading: DoodleAvatar(
+                  emoji: emoji,
+                  color: AppTheme.electricPink.withOpacity(0.18),
+                  photoBase64: photo,
+                  isOnline: isOnline,
+                  displayName: displayName,
+                  username: username,
+                  radius: 22,
+                ),
+                title: Text(
+                  '@$username',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : const Color(0xFF0E1017),
+                  ),
+                ),
+                subtitle: Text(
+                  bio,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8A90A6)),
+                ),
+                trailing: SizedBox(
+                  height: 34,
+                  child: ElevatedButton(
+                    onPressed: handleTap,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: actionBg,
+                      foregroundColor: isReceived ? Colors.black : Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      actionLabel,
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -975,7 +1207,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Tap "Add Friends" to connect and exchange doodles!',
+                'Search for a @username above to connect and exchange doodles!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
@@ -1139,6 +1371,7 @@ class _HomeScreenState extends State<HomeScreen> {
             emoji: contact.avatarEmoji,
             color: contact.avatarColor,
             photoBase64: contact.avatarPhotoBase64,
+            isOnline: contact.isOnline,
             radius: 20,
           ),
           const SizedBox(width: 12),
@@ -1321,7 +1554,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              contact.lastActive,
+              '@${contact.username}',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
                 color: const Color(0xFF8A90A6),

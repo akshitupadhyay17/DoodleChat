@@ -40,6 +40,7 @@ class StoryViewerSheet extends StatefulWidget {
     VoidCallback? onReply,
   }) {
     HapticFeedback.mediumImpact();
+    ChatService().markStorySeen(story);
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -71,6 +72,7 @@ class _StoryViewerSheetState extends State<StoryViewerSheet> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    ChatService().markStorySeen(widget.story);
     _doodleCtrl = DoodleController();
     _doodleCtrl.load(widget.story, forErasing: false);
     _doodleCtrl.locked = true;

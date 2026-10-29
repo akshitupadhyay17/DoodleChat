@@ -105,18 +105,18 @@ Path buildFreehandPath(
   if (pts.isEmpty) return path;
 
   double actualSize = size;
-  double thinning = 0.45;
+  double thinning = 0.0;
   double smoothing = 0.65;
-  double streamline = 0.55;
-  bool simulatePressure = true;
+  double streamline = 0.5;
+  bool simulatePressure = false;
 
   switch (brushType) {
     case DoodleBrushType.pen:
       actualSize = size;
-      thinning = 0.45;
+      thinning = 0.0;
       smoothing = 0.65;
-      streamline = 0.55;
-      simulatePressure = true;
+      streamline = 0.5;
+      simulatePressure = false;
       break;
     case DoodleBrushType.marker:
       // Real chisel marker: bold, broad, consistent width with no delicate thinning
@@ -128,14 +128,14 @@ Path buildFreehandPath(
       break;
     case DoodleBrushType.neon:
       actualSize = size * 1.1;
-      thinning = 0.25;
+      thinning = 0.0;
       smoothing = 0.6;
       streamline = 0.5;
-      simulatePressure = true;
+      simulatePressure = false;
       break;
     case DoodleBrushType.highlighter:
       actualSize = size * 2.5;
-      thinning = -0.05;
+      thinning = 0.0;
       smoothing = 0.5;
       streamline = 0.4;
       simulatePressure = false;
@@ -263,14 +263,14 @@ TextStyle doodleTextStyle(String fontStyle, double fontSize, Color color) {
 }
 
 class DoodleTextItem {
-  final String text;
+  String text;
   Offset position;
-  final Color color;
+  Color color;
 
   /// Font size in virtual units.
   double fontSize;
-  final String fontStyle; // 'PatrickHand', 'Caveat', 'Gaegu', 'Outfit', 'PlusJakartaSans', 'Neon'
-  final bool hasBackground; // Instagram stories text pill style!
+  String fontStyle; // 'PatrickHand', 'Caveat', 'Gaegu', 'Outfit', 'PlusJakartaSans', 'Neon'
+  bool hasBackground; // Instagram stories text pill style!
 
   TextPainter? _painter;
 

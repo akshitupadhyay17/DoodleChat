@@ -97,7 +97,15 @@ function loadState() {
     const raw = fs.readFileSync(STATE_FILE, 'utf8');
     const data = JSON.parse(raw);
     if (Array.isArray(data.profiles)) {
-      for (const p of data.profiles) if (p && p.username) profiles.set(p.username, p);
+      for (const p of data.profiles) {
+        if (p && p.username) {
+          const u = norm(p.username);
+          if (u && !profiles.has(u)) {
+            p.username = u;
+            profiles.set(u, p);
+          }
+        }
+      }
     }
     if (Array.isArray(data.friends)) {
       for (const f of data.friends) friends.add(f);
@@ -226,7 +234,7 @@ const server = http.createServer((req, res) => {
     const u = norm(url.searchParams.get('u'));
     const cid = url.searchParams.get('cid') || '';
     const p = profiles.get(u);
-    const taken = !!p && p.clientId !== cid && sockets.has(u);
+    const taken = (u === 'mayadoodles') || (!!p && p.clientId !== cid);
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify({ username: u, available: !!u && u.length >= 3 && !taken }));
     return;
@@ -315,8 +323,8 @@ wss.on('connection', (ws) => {
         }
         const existing = profiles.get(username);
         const clientId = String(data.clientId || '');
-        if (existing && existing.clientId !== clientId && sockets.has(username)) {
-          send(ws, { type: 'register_error', reason: `@${username} is already taken. Pick another!` });
+        if (username === 'mayadoodles' || (existing && existing.clientId !== clientId)) {
+          send(ws, { type: 'register_error', reason: `@${username} is already taken. No two users can have the same ID!` });
           return;
         }
         // Replace an old socket of the same owner (page refresh / reconnect).
@@ -345,6 +353,39 @@ wss.on('connection', (ws) => {
         send(ws, buildSync(username));
         broadcastOnlineUsers();
         console.log(`+ @${username} online (${sockets.size} connected)`);
+        break;
+      }
+
+      case 'check_username': {
+        const u = norm(data.username);
+        const cid = String(data.clientId || '');
+        const existing = profiles.get(u);
+        const taken = (u === 'mayadoodles') || (!!existing && existing.clientId !== cid);
+        send(ws, {
+          type: 'check_username_result',
+          reqId: data.reqId,
+          username: u,
+          available: u.length >= 3 && !taken,
+        });
+        break;
+      }
+
+      case 'search_users': {
+        const q = norm(data.query);
+        const rawQ = String(data.query || '').toLowerCase().trim();
+        const results = [];
+        if (q.length > 0 || rawQ.length > 0) {
+          for (const p of profiles.values()) {
+            if (p.username === me) continue;
+            const uMatch = q.length > 0 && p.username.includes(q);
+            const nMatch = rawQ.length > 0 && String(p.name || '').toLowerCase().includes(rawQ);
+            if (uMatch || nMatch) {
+              results.push(publicProfile(p));
+              if (results.length >= 25) break;
+            }
+          }
+        }
+        send(ws, { type: 'search_users_result', reqId: data.reqId, users: results });
         break;
       }
 

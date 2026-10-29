@@ -42,6 +42,23 @@ class ChatService extends ChangeNotifier {
   final List<ChatContact> contacts = [];
   final List<DoodleGroup> groups = [];
   final List<Map<String, dynamic>> onlinePeers = [];
+  final Set<String> seenStoryIds = {};
+
+  String _normId(String raw) =>
+      raw.toLowerCase().replaceAll('@', '').trim().replaceAll(RegExp(r'[^a-z0-9_.]'), '');
+
+  bool isStorySeen(DoodleData? story) {
+    if (story == null) return false;
+    return seenStoryIds.contains(story.id);
+  }
+
+  void markStorySeen(DoodleData? story) {
+    if (story == null) return;
+    if (seenStoryIds.add(story.id)) {
+      _prefs?.setStringList('seenStories', seenStoryIds.toList());
+      notifyListeners();
+    }
+  }
 
   /// Username of the chat screen currently open (null on Home etc.).
   String? _activeChat;
@@ -89,21 +106,42 @@ class ChatService extends ChangeNotifier {
     isOnboarded = p.getBool('onboarded') ?? false;
     isLoggedIn = (p.getBool('loggedIn') ?? false) && currentUser.username.isNotEmpty;
 
+    final savedSeen = p.getStringList('seenStories');
+    if (savedSeen != null) {
+      seenStoryIds.addAll(savedSeen);
+    }
+
+    contacts.clear();
+    final seenContactIds = <String>{};
+    final myNorm = _normId(currentUser.username);
+    if (myNorm.isNotEmpty) seenContactIds.add(myNorm);
+
     final raw = p.getString('contacts');
     if (raw != null) {
       try {
         for (final j in (jsonDecode(raw) as List<dynamic>)) {
-          contacts.add(ChatContact.fromJson(Map<String, dynamic>.from(j as Map)));
+          final c = ChatContact.fromJson(Map<String, dynamic>.from(j as Map));
+          final cNorm = _normId(c.username.isNotEmpty ? c.username : c.id);
+          if (cNorm.isNotEmpty && seenContactIds.add(cNorm)) {
+            contacts.add(c);
+          }
         }
       } catch (_) {}
     }
-    contacts.add(_buildDemoContact());
+    if (seenContactIds.add('mayadoodles')) {
+      contacts.add(_buildDemoContact());
+    }
 
+    groups.clear();
+    final seenGroupIds = <String>{};
     final rawGroups = p.getString('groups');
     if (rawGroups != null) {
       try {
         for (final j in (jsonDecode(rawGroups) as List<dynamic>)) {
-          groups.add(DoodleGroup.fromJson(Map<String, dynamic>.from(j as Map)));
+          final g = DoodleGroup.fromJson(Map<String, dynamic>.from(j as Map));
+          if (g.id.isNotEmpty && seenGroupIds.add(g.id)) {
+            groups.add(g);
+          }
         }
       } catch (_) {}
     }
@@ -160,6 +198,21 @@ class ChatService extends ChangeNotifier {
   void _saveContacts() {
     final p = _prefs;
     if (p == null) return;
+    final seen = <String>{};
+    final myNorm = _normId(currentUser.username);
+    if (myNorm.isNotEmpty) seen.add(myNorm);
+    final unique = <ChatContact>[];
+    for (final c in contacts) {
+      final key = _normId(c.username.isNotEmpty ? c.username : c.id);
+      if (key.isNotEmpty && seen.add(key)) {
+        unique.add(c);
+      }
+    }
+    if (unique.length != contacts.length) {
+      contacts
+        ..clear()
+        ..addAll(unique);
+    }
     final list = contacts.where((c) => !c.isDemo).map((c) => c.toJson()).toList();
     p.setString('contacts', jsonEncode(list));
   }
@@ -309,6 +362,9 @@ class ChatService extends ChangeNotifier {
   // ───────────────────────── incoming ─────────────────────────
 
   final Map<String, Completer<Map<String, dynamic>?>> _lookups = {};
+  final Map<String, Completer<List<Map<String, dynamic>>>> _searches = {};
+  final Map<String, Completer<bool>> _usernameChecks = {};
+  Completer<String?>? _registerVerifyCompleter;
 
   Future<void> _onMessage(dynamic raw) async {
     _lastRx = DateTime.now();
@@ -322,9 +378,14 @@ class ChatService extends ChangeNotifier {
     switch (data['type']) {
       case 'registered_success':
         _retry = 0;
+        _gaveUp = false;
+        registerError = null;
         final restored = _everConnected && !isConnected;
         isConnected = true;
         _everConnected = true;
+        if (_registerVerifyCompleter != null && !_registerVerifyCompleter!.isCompleted) {
+          _registerVerifyCompleter!.complete(null);
+        }
         _updatePeers(data['users']);
         // Flush erases that happened while we were offline.
         for (final u in _queuedErases) {
@@ -338,8 +399,26 @@ class ChatService extends ChangeNotifier {
       case 'register_error':
         _gaveUp = true;
         registerError = data['reason']?.toString();
+        if (_registerVerifyCompleter != null && !_registerVerifyCompleter!.isCompleted) {
+          _registerVerifyCompleter!.complete(registerError ?? 'That username is already taken.');
+        }
         _events.add(ChatEvent(ChatEventType.registerError, message: registerError));
         break;
+
+      case 'check_username_result': {
+        final comp = _usernameChecks.remove(data['reqId']);
+        comp?.complete(data['available'] == true);
+        break;
+      }
+
+      case 'search_users_result': {
+        final comp = _searches.remove(data['reqId']);
+        final rawList = (data['users'] as List<dynamic>? ?? const []);
+        comp?.complete([
+          for (final item in rawList) Map<String, dynamic>.from(item as Map),
+        ]);
+        break;
+      }
 
       case 'online_users':
         _updatePeers(data['users']);
@@ -690,9 +769,10 @@ class ChatService extends ChangeNotifier {
   // ───────────────────────── contacts ─────────────────────────
 
   ChatContact? _find(String username) {
-    final u = username.toLowerCase().replaceAll('@', '').trim();
+    final u = _normId(username);
+    if (u.isEmpty) return null;
     for (final c in contacts) {
-      if (c.username.toLowerCase().replaceAll('@', '').trim() == u) return c;
+      if (_normId(c.username) == u || _normId(c.id) == u) return c;
     }
     return null;
   }
@@ -709,16 +789,152 @@ class ChatService extends ChangeNotifier {
 
   /// Looks the user up on the server (null = not found / not connected).
   Future<Map<String, dynamic>?> lookupUser(String username) {
-    final u = username.toLowerCase().replaceAll('@', '').trim();
-    if (_channel == null || !isConnected) return Future.value(null);
+    final u = _normId(username);
+    if (u.isEmpty || _channel == null || !isConnected) return Future.value(null);
     final reqId = '${DateTime.now().microsecondsSinceEpoch}';
     final comp = Completer<Map<String, dynamic>?>();
     _lookups[reqId] = comp;
     _send({'type': 'lookup', 'username': u, 'reqId': reqId});
-    return comp.future.timeout(const Duration(seconds: 5), onTimeout: () {
+    return comp.future.timeout(const Duration(seconds: 4), onTimeout: () {
       _lookups.remove(reqId);
       return null;
     });
+  }
+
+  /// Checks whether a @username is unique and available (no 2 users can have the same ID).
+  Future<bool> checkUsernameAvailable(String rawUsername) async {
+    final u = _normId(rawUsername);
+    if (u.length < 3) return false;
+    if (u == 'mayadoodles') return false;
+    final mySaved = _normId(_prefs?.getString('username') ?? '');
+    if (mySaved.isNotEmpty && mySaved == u) return true;
+    if (contacts.any((c) => _normId(c.username) == u || _normId(c.id) == u)) {
+      return false;
+    }
+    if (onlinePeers.any((p) => _normId(p['username']?.toString() ?? '') == u)) {
+      return false;
+    }
+
+    // Probe server via a lightweight WebSocket lookup/check_username if not already connected
+    if (_channel != null && isConnected) {
+      final profile = await lookupUser(u);
+      if (profile != null) return false;
+      return true;
+    }
+
+    WebSocketChannel? probe;
+    StreamSubscription? probeSub;
+    try {
+      probe = WebSocketChannel.connect(Uri.parse(_wsUrl()));
+      await probe.ready.timeout(const Duration(milliseconds: 2200));
+      final reqId = 'chk_${DateTime.now().microsecondsSinceEpoch}';
+      final comp = Completer<bool>();
+      probeSub = probe.stream.listen((raw) {
+        try {
+          final m = Map<String, dynamic>.from(jsonDecode(raw.toString()) as Map);
+          if (m['type'] == 'check_username_result' && m['reqId'] == reqId) {
+            if (!comp.isCompleted) comp.complete(m['available'] == true);
+          } else if (m['type'] == 'lookup_result' && m['reqId'] == reqId) {
+            if (!comp.isCompleted) comp.complete(m['profile'] == null);
+          }
+        } catch (_) {}
+      }, onError: (_) {
+        if (!comp.isCompleted) comp.complete(true);
+      });
+      probe.sink.add(jsonEncode({
+        'type': 'check_username',
+        'username': u,
+        'clientId': currentUser.clientId,
+        'reqId': reqId,
+      }));
+      probe.sink.add(jsonEncode({
+        'type': 'lookup',
+        'username': u,
+        'reqId': reqId,
+      }));
+      return await comp.future.timeout(const Duration(milliseconds: 2200), onTimeout: () => true);
+    } catch (_) {
+      return true;
+    } finally {
+      await probeSub?.cancel();
+      try {
+        await probe?.sink.close();
+      } catch (_) {}
+    }
+  }
+
+  /// Connects and verifies that the server accepts registration without a duplicate ID error.
+  /// Returns null on success, or an error string if the ID is already taken.
+  Future<String?> registerAndVerify() async {
+    _gaveUp = false;
+    registerError = null;
+    disconnect();
+    _registerVerifyCompleter = Completer<String?>();
+    connect();
+    try {
+      return await _registerVerifyCompleter!.future.timeout(
+        const Duration(milliseconds: 2800),
+        onTimeout: () => null,
+      );
+    } finally {
+      _registerVerifyCompleter = null;
+    }
+  }
+
+  /// Searches people by username or name (merges online peers, server search, and exact lookup).
+  Future<List<Map<String, dynamic>>> searchUsers(String rawQuery) async {
+    final q = _normId(rawQuery);
+    final lowerRaw = rawQuery.trim().toLowerCase().replaceAll('@', '');
+    if (q.isEmpty && lowerRaw.isEmpty) return const [];
+
+    final me = _normId(currentUser.username);
+    final resultsByUsername = <String, Map<String, dynamic>>{};
+
+    // 1. Match online peers immediately
+    for (final p in onlinePeers) {
+      final u = _normId(p['username']?.toString() ?? '');
+      final n = (p['name']?.toString() ?? '').toLowerCase();
+      if (u.isEmpty || u == me) continue;
+      if ((q.isNotEmpty && u.contains(q)) || (lowerRaw.isNotEmpty && n.contains(lowerRaw))) {
+        resultsByUsername[u] = p;
+      }
+    }
+
+    if (_channel == null || !isConnected) {
+      resume();
+      return resultsByUsername.values.toList();
+    }
+
+    // 2. Query server search_users + exact lookup in parallel
+    final reqId = 'srch_${DateTime.now().microsecondsSinceEpoch}';
+    final searchComp = Completer<List<Map<String, dynamic>>>();
+    _searches[reqId] = searchComp;
+    _send({'type': 'search_users', 'query': rawQuery.trim(), 'reqId': reqId});
+
+    final lookupFuture = q.isNotEmpty && q != me ? lookupUser(q) : Future.value(null);
+    final searchFuture = searchComp.future.timeout(const Duration(milliseconds: 1200), onTimeout: () {
+      _searches.remove(reqId);
+      return const [];
+    });
+
+    final results = await Future.wait([lookupFuture, searchFuture]);
+    final exactProfile = results[0] as Map<String, dynamic>?;
+    final serverList = results[1] as List<Map<String, dynamic>>;
+
+    if (exactProfile != null) {
+      final u = _normId(exactProfile['username']?.toString() ?? '');
+      if (u.isNotEmpty && u != me) {
+        resultsByUsername[u] = exactProfile;
+      }
+    }
+    for (final p in serverList) {
+      final u = _normId(p['username']?.toString() ?? '');
+      if (u.isNotEmpty && u != me) {
+        resultsByUsername[u] = p;
+      }
+    }
+
+    return resultsByUsername.values.toList();
   }
 
   /// Returns the existing contact or creates one from the server profile.
@@ -730,10 +946,10 @@ class ChatService extends ChangeNotifier {
     final existing = _find(username);
     if (existing != null) return existing;
 
-    final lower = username.toLowerCase().replaceAll('@', '').trim();
+    final lower = _normId(username);
     Map<String, dynamic>? peer = profile;
     peer ??= onlinePeers.cast<Map<String, dynamic>?>().firstWhere(
-          (p) => p!['username'] == lower,
+          (p) => _normId(p?['username']?.toString() ?? '') == lower,
           orElse: () => null,
         );
     peer ??= await lookupUser(lower);
@@ -761,6 +977,7 @@ class ChatService extends ChangeNotifier {
       friendshipStatus: initialStatus,
       lastActive: 'Just now',
     );
+    contacts.removeWhere((x) => _normId(x.username) == lower || _normId(x.id) == lower);
     final demoIndex = contacts.indexWhere((x) => x.isDemo);
     contacts.insert(demoIndex == -1 ? contacts.length : 0, c);
     _saveContacts();
@@ -966,17 +1183,26 @@ class ChatService extends ChangeNotifier {
   }
 
   DoodleGroup createGroup(String name, String emoji, List<String> memberUsernames) {
-    final members = memberUsernames.toSet().toList();
-    if (currentUser.username.isNotEmpty && !members.contains(currentUser.username)) {
-      members.add(currentUser.username);
+    final seenMembers = <String>{};
+    final members = <String>[];
+    for (final m in memberUsernames) {
+      final u = _normId(m);
+      if (u.isNotEmpty && seenMembers.add(u)) {
+        members.add(u);
+      }
+    }
+    final myNorm = _normId(currentUser.username);
+    if (myNorm.isNotEmpty && seenMembers.add(myNorm)) {
+      members.add(myNorm);
     }
     final g = DoodleGroup(
-      id: 'grp_${DateTime.now().millisecondsSinceEpoch}',
+      id: 'grp_${DateTime.now().microsecondsSinceEpoch}',
       name: name,
       avatarEmoji: emoji.isNotEmpty ? emoji : '👥',
       memberUsernames: members,
       lastActive: DateTime.now(),
     );
+    groups.removeWhere((x) => x.id == g.id);
     groups.insert(0, g);
     _saveGroups();
     notifyListeners();
@@ -984,10 +1210,12 @@ class ChatService extends ChangeNotifier {
   }
 
   void addMemberToGroup(String groupId, String username) {
+    final u = _normId(username);
+    if (u.isEmpty) return;
     for (final g in groups) {
       if (g.id == groupId) {
-        if (!g.memberUsernames.contains(username)) {
-          g.memberUsernames.add(username);
+        if (!g.memberUsernames.any((m) => _normId(m) == u)) {
+          g.memberUsernames.add(u);
           _saveGroups();
           notifyListeners();
         }

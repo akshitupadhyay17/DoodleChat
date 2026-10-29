@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -28,6 +29,12 @@ class _AuthScreenState extends State<AuthScreen> {
   Color _selectedAvatarColor = AppTheme.electricPink;
   String? _selectedPhotoBase64;
 
+  Timer? _handleCheckTimer;
+  bool _isCheckingHandle = false;
+  bool? _isHandleAvailable;
+  String? _handleError;
+  bool _isSubmitting = false;
+
   final List<String> _givenAvatars = [
     '⚡️', '🔥', '✨', '🪐', '👾', '🌸',
     '🖤', '🎧', '🛹', '🎨', '🕶️', '💎',
@@ -50,7 +57,36 @@ class _AuthScreenState extends State<AuthScreen> {
       .toLowerCase()
       .replaceAll(RegExp(r'[^a-z0-9_.]'), '');
 
-  bool get _isHandleValid => _cleanedHandle.length >= 3;
+  bool get _isHandleValid => _cleanedHandle.length >= 3 && _isHandleAvailable != false;
+
+  void _onHandleTextChanged(String _) {
+    _handleCheckTimer?.cancel();
+    final handle = _cleanedHandle;
+    if (handle.length < 3) {
+      setState(() {
+        _isCheckingHandle = false;
+        _isHandleAvailable = null;
+        _handleError = null;
+      });
+      return;
+    }
+    setState(() {
+      _isCheckingHandle = true;
+      _isHandleAvailable = null;
+      _handleError = null;
+    });
+    _handleCheckTimer = Timer(const Duration(milliseconds: 350), () async {
+      final available = await ChatService().checkUsernameAvailable(handle);
+      if (!mounted || _cleanedHandle != handle) return;
+      setState(() {
+        _isCheckingHandle = false;
+        _isHandleAvailable = available;
+        _handleError = available
+            ? null
+            : '@$handle is already taken. No two users can have the same ID!';
+      });
+    });
+  }
 
   Future<void> _pickProfilePhoto() async {
     try {
@@ -82,8 +118,9 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void _onContinueUsername() {
-    if (!_isHandleValid) {
+  Future<void> _onContinueUsername() async {
+    final handle = _cleanedHandle;
+    if (handle.length < 3) {
       HapticFeedback.vibrate();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -96,13 +133,66 @@ class _AuthScreenState extends State<AuthScreen> {
       );
       return;
     }
+    if (_isCheckingHandle || _isSubmitting) return;
+
+    setState(() {
+      _isCheckingHandle = true;
+      _handleError = null;
+    });
+    final available = await ChatService().checkUsernameAvailable(handle);
+    if (!mounted) return;
+    setState(() {
+      _isCheckingHandle = false;
+      _isHandleAvailable = available;
+    });
+    if (!available) {
+      HapticFeedback.vibrate();
+      setState(() {
+        _handleError = '@$handle is already taken. No two users can have the same ID!';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '@$handle is already taken! Pick a unique ID.',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.electricPink,
+        ),
+      );
+      return;
+    }
+
     HapticFeedback.mediumImpact();
     setState(() => _step = 1);
   }
 
   Future<void> _completeRegistration({bool autoSelect = false}) async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
     HapticFeedback.heavyImpact();
     final chatService = ChatService();
+
+    // Re-check uniqueness before completing registration
+    final available = await chatService.checkUsernameAvailable(_cleanedHandle);
+    if (!mounted) return;
+    if (!available) {
+      setState(() {
+        _isSubmitting = false;
+        _step = 0;
+        _isHandleAvailable = false;
+        _handleError = '@$_cleanedHandle is already taken. No two users can have the same ID!';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '@$_cleanedHandle is already taken! Please choose another ID.',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.electricPink,
+        ),
+      );
+      return;
+    }
 
     String finalAvatar = _selectedAvatar;
     Color finalColor = _selectedAvatarColor;
@@ -123,10 +213,33 @@ class _AuthScreenState extends State<AuthScreen> {
     chatService.isLoggedIn = true;
     chatService.isOnboarded = true;
 
-    await chatService.saveProfile();
-    chatService.connect();
-
+    final err = await chatService.registerAndVerify();
     if (!mounted) return;
+    if (err != null) {
+      chatService.isLoggedIn = false;
+      chatService.isOnboarded = false;
+      chatService.currentUser.username = '';
+      setState(() {
+        _isSubmitting = false;
+        _step = 0;
+        _isHandleAvailable = false;
+        _handleError = err;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            err,
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.electricPink,
+        ),
+      );
+      return;
+    }
+
+    await chatService.saveProfile();
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
@@ -139,6 +252,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
+    _handleCheckTimer?.cancel();
     _usernameController.dispose();
     _customEmojiController.dispose();
     super.dispose();
@@ -272,7 +386,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
                     ],
-                    onChanged: (_) => setState(() {}),
+                    onChanged: _onHandleTextChanged,
                     decoration: InputDecoration(
                       hintText: 'username',
                       hintStyle: GoogleFonts.plusJakartaSans(
@@ -284,7 +398,26 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                 ),
-                if (_isHandleValid)
+                if (_isCheckingHandle)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppTheme.electricPink,
+                    ),
+                  )
+                else if (_cleanedHandle.length >= 3 && _isHandleAvailable == false)
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.electricPink,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 16),
+                  ).animate().shakeX(hz: 4, amount: 3)
+                else if (_isHandleValid)
                   Container(
                     width: 24,
                     height: 24,
@@ -300,13 +433,19 @@ class _AuthScreenState extends State<AuthScreen> {
 
           const SizedBox(height: 12),
           Text(
-            _isHandleValid
-                ? '✨ Ready as @$_cleanedHandle'
-                : 'Letters, numbers, and underscores (min 3 chars)',
+            _handleError != null
+                ? '⚠️ $_handleError'
+                : _isCheckingHandle
+                    ? 'Checking if @$_cleanedHandle is available…'
+                    : _isHandleValid
+                        ? '✨ @$_cleanedHandle is unique & ready'
+                        : 'Letters, numbers, and underscores (min 3 chars)',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: _isHandleValid ? AppTheme.acidLime : const Color(0xFF8A90A6),
+              color: _handleError != null
+                  ? AppTheme.electricPink
+                  : (_isHandleValid ? AppTheme.acidLime : const Color(0xFF8A90A6)),
             ),
           ),
 
@@ -542,38 +681,56 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 12),
 
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _givenAvatars.map((emoji) {
-              final isSelected = _selectedAvatar == emoji;
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _selectedAvatar = emoji);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppTheme.electricPink.withOpacity(0.18)
-                        : (isDark ? AppTheme.darkCard : Colors.white),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppTheme.electricPink
-                          : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
-                      width: isSelected ? 2 : 1,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                width: 1,
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: _givenAvatars.map((emoji) {
+                  final isSelected = _selectedAvatar == emoji && _selectedPhotoBase64 == null;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _selectedAvatar = emoji;
+                          _selectedPhotoBase64 = null;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppTheme.electricPink.withValues(alpha: 0.18)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected ? AppTheme.electricPink : Colors.transparent,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
 
           const SizedBox(height: 24),
